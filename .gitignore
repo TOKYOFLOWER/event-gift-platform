@@ -1,0 +1,18 @@
+﻿# Script Properties（秘密情報 — 絶対にコミットしない）
+.env
+*.env
+script-properties.json
+
+# clasp 認証情報
+.clasprc.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# Node (ツール用)
+node_modules/
