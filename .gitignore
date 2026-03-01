@@ -16,3 +16,23 @@ Thumbs.db
 
 # Node (ツール用)
 node_modules/
+
+# OpenClaw workspace files
+.openclaw/
+AGENTS.md
+SOUL.md
+TOOLS.md
+USER.md
+IDENTITY.md
+HEARTBEAT.md
+BOOTSTRAP.md
+MEMORY.md
+memory/
+
+# clasp 重複ファイル（スペースなしバグ版）
+.claspadmin.json
+.clasppublic.json
+
+# clasp 作業用一時ファイル
+.clasp.json
+appsscript.json
