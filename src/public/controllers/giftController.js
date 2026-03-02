@@ -18,7 +18,8 @@ function apiListPublicProducts(params) {
   // eventId が指定された場合はイベントのバリデーション
   if (params.eventId) {
     var ev = findEventById(params.eventId);
-    if (!ev || ev.status !== EVENT_STATUS.PUBLISHED) {
+    // normalizeStatus() で大文字小文字・前後スペースを吸収（シート手動入力対策）
+    if (!ev || normalizeStatus(ev.status) !== EVENT_STATUS.PUBLISHED) {
       throw notFound('イベントが見つかりません');
     }
     if (ev.giftDeadlineAt && new Date(ev.giftDeadlineAt) <= now) {
