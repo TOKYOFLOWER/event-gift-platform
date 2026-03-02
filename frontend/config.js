@@ -9,5 +9,6 @@ window.GAS_CONFIG = {
   gmoTokenJsUrl: 'https://stg.static.mul-pay.jp/token.js',
 
   // フロントエンドのベース URL（GMO コールバック先）
-  frontendBaseUrl: 'https://hanataba.tokyoflower.jp'
+  // Vercel root = frontend/ のため /public サブパスが必要
+  frontendBaseUrl: 'https://hanataba.tokyoflower.jp/public'
 };

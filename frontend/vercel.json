@@ -4,6 +4,7 @@
     { "source": "/events/:path*", "destination": "/public/event-detail.html" },
     { "source": "/gift/:path*", "destination": "/public/gift-products.html" },
     { "source": "/thank-you", "destination": "/public/thank-you.html" },
+    { "source": "/thank-you.html", "destination": "/public/thank-you.html" },
     { "source": "/orders", "destination": "/public/order-inquiry.html" },
     { "source": "/admin", "destination": "/admin/index.html" },
     { "source": "/admin/:path*", "destination": "/admin/:path*.html" }
