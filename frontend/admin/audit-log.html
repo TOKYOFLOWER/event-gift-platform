@@ -1,17 +1,18 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💐</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>監査ログ — はなたば Admin</title>
+  <title>逶｣譟ｻ繝ｭ繧ｰ 窶・縺ｯ縺ｪ縺溘・ Admin</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="../shared/css/style.css">
 </head>
 <body>
 <div id="pageContent">
   <div class="d-flex align-items-center justify-content-between mb-3">
-    <p class="text-muted small mb-0">最新 200 件を表示</p>
-    <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()">🔄 更新</button>
+    <p class="text-muted small mb-0">譛譁ｰ 200 莉ｶ繧定｡ｨ遉ｺ</p>
+    <button class="btn btn-sm btn-outline-secondary" onclick="loadLogs()">売 譖ｴ譁ｰ</button>
   </div>
   <div id="listArea"><div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span></div></div>
 </div>
@@ -24,7 +25,7 @@
 <script src="../shared/js/api.js"></script>
 <script src="../shared/js/admin-layout.js"></script>
 <script>
-initAdminLayout({ pageTitle: '監査ログ', activeNav: 'audit-log' });
+initAdminLayout({ pageTitle: '逶｣譟ｻ繝ｭ繧ｰ', activeNav: 'audit-log' });
 
 let api;
 
@@ -46,17 +47,18 @@ async function loadLogs() {
     const logs = await api.admin.listAuditLogs(200);
     setHtml('#listArea', renderTable({
       cols: [
-        { label: '日時', key: 'createdAt', render: r => `<span class="small">${fmtDateTime(r.createdAt)}</span>` },
-        { label: '操作者', key: 'actorEmail', render: r => `<span class="small">${esc(r.actorEmail)}</span>` },
-        { label: '操作', key: 'action', render: r => `<code class="small">${esc(r.action)}</code>` },
-        { label: '対象種別', key: 'entityType' },
-        { label: '対象ID', key: 'entityId', render: r => `<span class="font-monospace small">${esc(r.entityId)}</span>` },
+        { label: '譌･譎・, key: 'createdAt', render: r => `<span class="small">${fmtDateTime(r.createdAt)}</span>` },
+        { label: '謫堺ｽ懆・, key: 'actorEmail', render: r => `<span class="small">${esc(r.actorEmail)}</span>` },
+        { label: '謫堺ｽ・, key: 'action', render: r => `<code class="small">${esc(r.action)}</code>` },
+        { label: '蟇ｾ雎｡遞ｮ蛻･', key: 'entityType' },
+        { label: '蟇ｾ雎｡ID', key: 'entityId', render: r => `<span class="font-monospace small">${esc(r.entityId)}</span>` },
       ],
       rows: logs,
-      emptyMsg: 'ログがありません'
+      emptyMsg: '繝ｭ繧ｰ縺後≠繧翫∪縺帙ｓ'
     }));
   } catch (e) { showError('#listArea', e.message); }
 }
 </script>
 </body>
 </html>
+

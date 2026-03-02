@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💐</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>商品を選ぶ — はなたば</title>
+  <title>蝠・刀繧帝∈縺ｶ 窶・縺ｯ縺ｪ縺溘・</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="../shared/css/style.css">
 </head>
@@ -11,13 +12,13 @@
 
 <nav class="pub-nav">
   <div class="container d-flex align-items-center justify-content-between">
-    <a href="index.html" class="brand">🌸 はなたば</a>
-    <a href="order-inquiry.html" class="text-white small">注文照会</a>
+    <a href="index.html" class="brand">減 縺ｯ縺ｪ縺溘・</a>
+    <a href="order-inquiry.html" class="text-white small">豕ｨ譁・・莨・/a>
   </div>
 </nav>
 
 <main id="pageContent">
-  <div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span>読み込み中...</div>
+  <div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span>隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -49,19 +50,18 @@
   const performer = performers.find(p => p.performerId === performerId);
 
   if (!performer) {
-    setHtml('#pageContent', `<div class="container py-5"><div class="error-banner">出演者が見つかりません。</div></div>`);
+    setHtml('#pageContent', `<div class="container py-5"><div class="error-banner">蜃ｺ貍碑・′隕九▽縺九ｊ縺ｾ縺帙ｓ縲・/div></div>`);
     return;
   }
 
-  // 商品カード
-  let selectedProductId = null;
+  // 蝠・刀繧ｫ繝ｼ繝・  let selectedProductId = null;
 
   const cardsHtml = products.map(p => `
     <div class="col-6 col-md-4">
       <label class="product-card d-block h-100 p-3" data-product-id="${esc(p.productId)}" onclick="selectProduct('${esc(p.productId)}')">
         ${p.imageUrl
           ? `<img src="${esc(p.imageUrl)}" class="product-img mb-2" alt="${esc(p.name)}">`
-          : `<div class="product-img-placeholder mb-2">🌸</div>`}
+          : `<div class="product-img-placeholder mb-2">減</div>`}
         <p class="fw-bold mb-0">${esc(p.name)}</p>
         <p class="text-danger fw-bold mb-0">${fmtJPY(p.priceJPY)}</p>
         ${p.description ? `<p class="small text-muted mb-0">${esc(p.description)}</p>` : ''}
@@ -70,7 +70,7 @@
 
   const avatar = performer.avatarUrl
     ? `<img src="${esc(performer.avatarUrl)}" class="performer-avatar" style="width:56px;height:56px" alt="${esc(performer.displayName)}">`
-    : `<div class="performer-avatar-placeholder" style="width:56px;height:56px;font-size:1.5rem">🎤</div>`;
+    : `<div class="performer-avatar-placeholder" style="width:56px;height:56px;font-size:1.5rem">痔</div>`;
 
   setHtml('#pageContent', `
     <div class="container py-4" style="max-width:900px">
@@ -78,7 +78,7 @@
         <ol class="breadcrumb small">
           <li class="breadcrumb-item"><a href="index.html">TOP</a></li>
           <li class="breadcrumb-item"><a href="event-detail.html?id=${esc(eventId)}">${esc(ev.title)}</a></li>
-          <li class="breadcrumb-item active">商品選択</li>
+          <li class="breadcrumb-item active">蝠・刀驕ｸ謚・/li>
         </ol>
       </nav>
 
@@ -86,41 +86,39 @@
         ${avatar}
         <div>
           <h2 class="fw-bold mb-0">${esc(performer.displayName)}</h2>
-          <p class="text-muted small mb-0">${esc(ev.title)} への差し入れ</p>
+          <p class="text-muted small mb-0">${esc(ev.title)} 縺ｸ縺ｮ蟾ｮ縺怜・繧・/p>
         </div>
       </div>
 
-      <h4 class="fw-bold mb-3">🌸 商品を選ぶ</h4>
+      <h4 class="fw-bold mb-3">減 蝠・刀繧帝∈縺ｶ</h4>
 
       ${products.length ? `
         <div class="row g-3 mb-4">${cardsHtml}</div>
 
         <div id="selectedInfo" class="alert alert-success d-none" style="border-left:4px solid #28a745">
-          選択中: <strong id="selectedName"></strong> — <strong id="selectedPrice"></strong>
+          驕ｸ謚樔ｸｭ: <strong id="selectedName"></strong> 窶・<strong id="selectedPrice"></strong>
         </div>
 
         <div class="d-grid mt-3">
           <button id="nextBtn" class="btn-gift btn-lg py-3 text-center" disabled onclick="goNext()">
-            次へ：メッセージを入力 →
-          </button>
+            谺｡縺ｸ・壹Γ繝・そ繝ｼ繧ｸ繧貞・蜉・竊・          </button>
         </div>
-      ` : '<p class="text-muted">現在取り扱い商品がありません。</p>'}
+      ` : '<p class="text-muted">迴ｾ蝨ｨ蜿悶ｊ謇ｱ縺・膚蜩√′縺ゅｊ縺ｾ縺帙ｓ縲・/p>'}
     </div>`);
 
-  // 商品選択ロジック（グローバル関数として定義）
-  const productsData = Object.fromEntries(products.map(p => [p.productId, p]));
+  // 蝠・刀驕ｸ謚槭Ο繧ｸ繝・け・医げ繝ｭ繝ｼ繝舌Ν髢｢謨ｰ縺ｨ縺励※螳夂ｾｩ・・  const productsData = Object.fromEntries(products.map(p => [p.productId, p]));
 
   window.selectProduct = (productId) => {
     selectedProductId = productId;
     const p = productsData[productId];
     if (!p) return;
 
-    // スタイル更新
+    // 繧ｹ繧ｿ繧､繝ｫ譖ｴ譁ｰ
     $$('.product-card').forEach(el => el.classList.remove('selected'));
     const card = $(`[data-product-id="${productId}"]`);
     if (card) card.classList.add('selected');
 
-    // 選択情報表示
+    // 驕ｸ謚樊ュ蝣ｱ陦ｨ遉ｺ
     setText('#selectedName', p.name);
     setText('#selectedPrice', fmtJPY(p.priceJPY));
     show('#selectedInfo');
@@ -137,3 +135,4 @@
 </script>
 </body>
 </html>
+

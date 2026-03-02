@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💐</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>差し入れ情報を入力 — はなたば</title>
+  <title>蟾ｮ縺怜・繧梧ュ蝣ｱ繧貞・蜉・窶・縺ｯ縺ｪ縺溘・</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="../shared/css/style.css">
 </head>
@@ -11,8 +12,8 @@
 
 <nav class="pub-nav">
   <div class="container d-flex align-items-center justify-content-between">
-    <a href="index.html" class="brand">🌸 はなたば</a>
-    <a href="order-inquiry.html" class="text-white small">注文照会</a>
+    <a href="index.html" class="brand">減 縺ｯ縺ｪ縺溘・</a>
+    <a href="order-inquiry.html" class="text-white small">豕ｨ譁・・莨・/a>
   </div>
 </nav>
 
@@ -21,20 +22,20 @@
   <nav aria-label="breadcrumb">
     <ol class="breadcrumb small">
       <li class="breadcrumb-item"><a href="index.html">TOP</a></li>
-      <li class="breadcrumb-item" id="breadEventLink"><a href="#">イベント</a></li>
-      <li class="breadcrumb-item"><a id="breadBackLink" href="#">商品選択</a></li>
-      <li class="breadcrumb-item active">情報入力</li>
+      <li class="breadcrumb-item" id="breadEventLink"><a href="#">繧､繝吶Φ繝・/a></li>
+      <li class="breadcrumb-item"><a id="breadBackLink" href="#">蝠・刀驕ｸ謚・/a></li>
+      <li class="breadcrumb-item active">諠・ｱ蜈･蜉・/li>
     </ol>
   </nav>
 
-  <!-- ローディング/エラー -->
+  <!-- 繝ｭ繝ｼ繝・ぅ繝ｳ繧ｰ/繧ｨ繝ｩ繝ｼ -->
   <div id="statusArea"></div>
 
-  <!-- 選択サマリー -->
+  <!-- 驕ｸ謚槭し繝槭Μ繝ｼ -->
   <div id="summaryCard" class="card p-3 mb-4 bg-light d-none">
     <div class="row align-items-center g-2">
       <div class="col-auto">
-        <span id="summaryImg" style="font-size:2.5rem">🌸</span>
+        <span id="summaryImg" style="font-size:2.5rem">減</span>
       </div>
       <div class="col">
         <p class="fw-bold mb-0" id="summaryProduct"></p>
@@ -44,64 +45,64 @@
     </div>
   </div>
 
-  <!-- フォーム -->
+  <!-- 繝輔か繝ｼ繝 -->
   <form id="checkoutForm" class="d-none" novalidate>
     <div class="form-section">
-      <p class="form-section-title">贈り主情報</p>
+      <p class="form-section-title">雍医ｊ荳ｻ諠・ｱ</p>
       <div class="mb-3">
-        <label class="form-label fw-semibold">お名前（公開名義）</label>
-        <input type="text" class="form-control" name="buyerName" placeholder="山田 花子" maxlength="50">
-        <div class="form-text text-muted">省略可。匿名にする場合は下のチェックを使ってください。</div>
+        <label class="form-label fw-semibold">縺雁錐蜑搾ｼ亥・髢句錐鄒ｩ・・/label>
+        <input type="text" class="form-control" name="buyerName" placeholder="螻ｱ逕ｰ 闃ｱ蟄・ maxlength="50">
+        <div class="form-text text-muted">逵∫払蜿ｯ縲ょ諺蜷阪↓縺吶ｋ蝣ｴ蜷医・荳九・繝√ぉ繝・け繧剃ｽｿ縺｣縺ｦ縺上□縺輔＞縲・/div>
       </div>
       <div class="mb-3">
-        <label class="form-label fw-semibold">メールアドレス <span class="text-danger">*</span></label>
+        <label class="form-label fw-semibold">繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ <span class="text-danger">*</span></label>
         <input type="email" class="form-control" name="buyerEmail" placeholder="example@email.com" required>
-        <div class="form-text text-muted">注文確認メールをお送りします。</div>
+        <div class="form-text text-muted">豕ｨ譁・｢ｺ隱阪Γ繝ｼ繝ｫ繧偵♀騾√ｊ縺励∪縺吶・/div>
       </div>
       <div class="mb-3">
-        <label class="form-label fw-semibold">電話番号（任意）</label>
+        <label class="form-label fw-semibold">髮ｻ隧ｱ逡ｪ蜿ｷ・井ｻｻ諢擾ｼ・/label>
         <input type="tel" class="form-control" name="buyerPhone" placeholder="090-xxxx-xxxx">
       </div>
     </div>
 
     <div class="form-section">
-      <p class="form-section-title" id="messageTitle">メッセージ</p>
+      <p class="form-section-title" id="messageTitle">繝｡繝・そ繝ｼ繧ｸ</p>
       <div class="mb-3">
-        <label class="form-label fw-semibold" id="messageLabel">応援メッセージ（任意）</label>
+        <label class="form-label fw-semibold" id="messageLabel">蠢懈抄繝｡繝・そ繝ｼ繧ｸ・井ｻｻ諢擾ｼ・/label>
         <textarea class="form-control" name="messageToPerformer" rows="4" maxlength="400"
-          placeholder="お疲れさまでした！いつも素敵な演奏をありがとうございます。"></textarea>
+          placeholder="縺顔夢繧後＆縺ｾ縺ｧ縺励◆・√＞縺､繧らｴ謨ｵ縺ｪ貍泌･上ｒ縺ゅｊ縺後→縺・＃縺悶＞縺ｾ縺吶・></textarea>
         <div class="form-text text-muted text-end"><span id="msgCount">0</span> / 400</div>
       </div>
       <div class="mb-2 form-check">
         <input type="checkbox" class="form-check-input" name="isMessagePublic" id="chkPublic">
-        <label class="form-check-label" for="chkPublic">このメッセージをイベントページで公開する</label>
+        <label class="form-check-label" for="chkPublic">縺薙・繝｡繝・そ繝ｼ繧ｸ繧偵う繝吶Φ繝医・繝ｼ繧ｸ縺ｧ蜈ｬ髢九☆繧・/label>
       </div>
       <div class="mb-3 form-check">
         <input type="checkbox" class="form-check-input" name="isAnonymous" id="chkAnon">
-        <label class="form-check-label" for="chkAnon">匿名で差し入れる（名前を非表示）</label>
+        <label class="form-check-label" for="chkAnon">蛹ｿ蜷阪〒蟾ｮ縺怜・繧後ｋ・亥錐蜑阪ｒ髱櫁｡ｨ遉ｺ・・/label>
       </div>
     </div>
 
     <div class="alert alert-light border mb-4">
-      <p class="small text-muted mb-1">⚠️ ご注意</p>
+      <p class="small text-muted mb-1">笞・・縺疲ｳｨ諢・/p>
       <ul class="small text-muted mb-0">
-        <li>「支払いへ進む」をクリックすると決済画面へ移動します</li>
-        <li>決済完了後、確認メールをお送りします</li>
-        <li>差し入れは会場でまとめて出演者にお渡しします</li>
+        <li>縲梧髪謇輔＞縺ｸ騾ｲ繧縲阪ｒ繧ｯ繝ｪ繝・け縺吶ｋ縺ｨ豎ｺ貂育判髱｢縺ｸ遘ｻ蜍輔＠縺ｾ縺・/li>
+        <li>豎ｺ貂亥ｮ御ｺ・ｾ後∫｢ｺ隱阪Γ繝ｼ繝ｫ繧偵♀騾√ｊ縺励∪縺・/li>
+        <li>蟾ｮ縺怜・繧後・莨壼ｴ縺ｧ縺ｾ縺ｨ繧√※蜃ｺ貍碑・↓縺頑ｸ｡縺励＠縺ｾ縺・/li>
       </ul>
     </div>
 
     <div id="formError" class="error-banner d-none mb-3"></div>
 
     <div class="d-grid">
-      <button type="submit" id="submitBtn" class="btn-gift btn-lg py-3">💳 支払いへ進む</button>
+      <button type="submit" id="submitBtn" class="btn-gift btn-lg py-3">諜 謾ｯ謇輔＞縺ｸ騾ｲ繧</button>
     </div>
   </form>
 
 </main>
 
 <footer class="border-top py-4 mt-5">
-  <div class="container text-center text-muted small">&copy; 2026 はなたば.</div>
+  <div class="container text-center text-muted small">&copy; 2026 縺ｯ縺ｪ縺溘・.</div>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -116,7 +117,7 @@
 
   if (!eventId || !performerId || !productId) { location.href = 'index.html'; return; }
 
-  // パンくず更新
+  // 繝代Φ縺上★譖ｴ譁ｰ
   $('#breadEventLink a').href = `event-detail.html?id=${eventId}`;
   $('#breadBackLink').href    = `gift-products.html?eventId=${eventId}&performerId=${performerId}`;
 
@@ -138,7 +139,7 @@
   const { event: ev, performers } = evResult;
   const performer = performers.find(p => p.performerId === performerId);
 
-  // 商品検索
+  // 蝠・刀讀懃ｴ｢
   let product;
   try {
     const products = await api.public.listProducts({ eventId });
@@ -146,36 +147,35 @@
   } catch (_) {}
 
   if (!performer || !product) {
-    showError('#statusArea', '情報の取得に失敗しました。最初からやり直してください。');
+    showError('#statusArea', '諠・ｱ縺ｮ蜿門ｾ励↓螟ｱ謨励＠縺ｾ縺励◆縲よ怙蛻昴°繧峨ｄ繧顔峩縺励※縺上□縺輔＞縲・);
     return;
   }
 
-  // サマリー表示
+  // 繧ｵ繝槭Μ繝ｼ陦ｨ遉ｺ
   if (product.imageUrl) {
     setHtml('#summaryImg', `<img src="${esc(product.imageUrl)}" style="width:56px;height:56px;object-fit:cover;border-radius:8px">`);
   }
   setText('#summaryProduct', product.name);
   setText('#summaryPrice', fmtJPY(product.priceJPY));
-  setText('#summaryTarget', `宛先: ${performer.displayName} / ${ev.title}`);
+  setText('#summaryTarget', `螳帛・: ${performer.displayName} / ${ev.title}`);
   show('#summaryCard');
 
-  // ラベル更新
-  setText('#messageTitle',  `メッセージ（${performer.displayName}さんへ）`);
-  setText('#messageLabel', `応援メッセージ（任意 — ${performer.displayName}さんへ）`);
+  // 繝ｩ繝吶Ν譖ｴ譁ｰ
+  setText('#messageTitle',  `繝｡繝・そ繝ｼ繧ｸ・・{performer.displayName}縺輔ｓ縺ｸ・荏);
+  setText('#messageLabel', `蠢懈抄繝｡繝・そ繝ｼ繧ｸ・井ｻｻ諢・窶・${performer.displayName}縺輔ｓ縺ｸ・荏);
 
   show('#checkoutForm');
 
-  // 文字数カウント
-  $('[name=messageToPerformer]').addEventListener('input', function() {
+  // 譁・ｭ玲焚繧ｫ繧ｦ繝ｳ繝・  $('[name=messageToPerformer]').addEventListener('input', function() {
     setText('#msgCount', this.value.length);
   });
 
-  // フォーム送信
+  // 繝輔か繝ｼ繝騾∽ｿ｡
   document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
-    btn.textContent = '処理中...';
+    btn.textContent = '蜃ｦ逅・ｸｭ...';
     hide('#formError');
 
     const data = formToObj(e.target);
@@ -189,16 +189,16 @@
         returnBaseUrl: getConfig().frontendBaseUrl
       });
 
-      // GMO-PG 決済画面へリダイレクト
-      location.href = result.redirectUrl;
+      // GMO-PG 豎ｺ貂育判髱｢縺ｸ繝ｪ繝繧､繝ｬ繧ｯ繝・      location.href = result.redirectUrl;
     } catch (err) {
       setHtml('#formError', esc(err.message));
       show('#formError');
       btn.disabled = false;
-      btn.textContent = '💳 支払いへ進む';
+      btn.textContent = '諜 謾ｯ謇輔＞縺ｸ騾ｲ繧';
     }
   });
 })();
 </script>
 </body>
 </html>
+
