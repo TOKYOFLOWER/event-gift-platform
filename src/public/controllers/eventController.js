@@ -80,7 +80,7 @@ function apiGetPublicEvent(eventId) {
   if (!eventId) throw badRequest('id は必須です');
 
   var ev = findEventById(eventId);
-  if (!ev || ev.status !== EVENT_STATUS.PUBLISHED) {
+  if (!ev || normalizeStatus(ev.status) !== EVENT_STATUS.PUBLISHED) {
     throw notFound('イベントが見つかりません');
   }
 

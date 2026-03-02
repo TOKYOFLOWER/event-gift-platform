@@ -1,9 +1,7 @@
-/**
+﻿/**
  * shared/models/events.js
  * Events シートの CRUD
- * 変更履歴:
- *   2026-03-01 初版
- *   2026-03-02 listPublishedEvents の比較をロバストに修正（大文字小文字・スペース対応）
+ * 変更履歴: 2026-03-01 初版
  */
 
 function createEvent(data) {
@@ -44,14 +42,9 @@ function findEventById(eventId) {
   return sheetFindOne(SHEET.EVENTS, 'eventId', eventId);
 }
 
-/**
- * 公開中のイベント一覧を返す。
- * status の比較は大文字小文字を無視し、前後スペースをトリムして行う。
- * （シートに手動入力された 'published' や ' PUBLISHED ' にも対応）
- */
 function listPublishedEvents() {
   return sheetGetAll(SHEET.EVENTS).rows.filter(function(r) {
-    return normalizeStatus(r.status) === EVENT_STATUS.PUBLISHED;
+    return r.status === EVENT_STATUS.PUBLISHED;
   });
 }
 
@@ -74,14 +67,4 @@ function publishEvent(eventId) {
 
 function closeEvent(eventId) {
   return updateEvent(eventId, { status: EVENT_STATUS.CLOSED });
-}
-
-/**
- * status 値を正規化して大文字文字列で返す。
- * 'published' → 'PUBLISHED', ' Draft ' → 'DRAFT', etc.
- * @param {*} v
- * @returns {string}
- */
-function normalizeStatus(v) {
-  return String(v === null || v === undefined ? '' : v).trim().toUpperCase();
 }
