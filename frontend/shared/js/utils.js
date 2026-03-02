@@ -245,5 +245,9 @@ function getConfig() {
   if (!window.GAS_CONFIG) {
     throw new Error('config.js が読み込まれていません。config.example.js を参考に config.js を作成してください。');
   }
-  return window.GAS_CONFIG;
+  const cfg = window.GAS_CONFIG;
+  // apiUrl を publicUrl / adminUrl のフォールバックとして使用
+  if (cfg.apiUrl && !cfg.publicUrl) cfg.publicUrl = cfg.apiUrl;
+  if (cfg.apiUrl && !cfg.adminUrl)  cfg.adminUrl  = cfg.apiUrl;
+  return cfg;
 }
