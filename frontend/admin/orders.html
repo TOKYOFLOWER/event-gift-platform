@@ -1,55 +1,54 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💐</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>豕ｨ譁・ｮ｡逅・窶・縺ｯ縺ｪ縺溘・ Admin</title>
+  <title>注文管理 — はなたば Admin</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="../shared/css/style.css">
 </head>
 <body>
 <div id="pageContent">
-  <!-- 繝輔ぅ繝ｫ繧ｿ繝ｼ -->
+  <!-- フィルター -->
   <div class="card p-3 mb-3">
     <div class="row g-2 align-items-end">
       <div class="col-md-3">
-        <label class="form-label small">繧､繝吶Φ繝・/label>
+        <label class="form-label small">イベント</label>
         <select id="filterEvent" class="form-select form-select-sm">
-          <option value="">縺吶∋縺ｦ</option>
+          <option value="">すべて</option>
         </select>
       </div>
       <div class="col-md-3">
-        <label class="form-label small">豎ｺ貂育憾豕・/label>
+        <label class="form-label small">決済状況</label>
         <select id="filterPayment" class="form-select form-select-sm">
-          <option value="">縺吶∋縺ｦ</option>
-          <option value="PENDING">菫晉蕗荳ｭ</option>
-          <option value="PAID">遒ｺ螳・/option>
-          <option value="CANCELED">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</option>
+          <option value="">すべて</option>
+          <option value="PENDING">保留中</option>
+          <option value="PAID">確定</option>
+          <option value="CANCELED">キャンセル</option>
         </select>
       </div>
       <div class="col-md-3">
-        <label class="form-label small">縺雁ｱ翫￠迥ｶ豕・/label>
+        <label class="form-label small">お届け状況</label>
         <select id="filterFulfill" class="form-select form-select-sm">
-          <option value="">縺吶∋縺ｦ</option>
-          <option value="PENDING_DELIVERY">譛ｪ逋ｺ騾・/option>
-          <option value="DELIVERED">逋ｺ騾∵ｸ医∩</option>
-          <option value="COMPLETED">螳御ｺ・/option>
+          <option value="">すべて</option>
+          <option value="PENDING_DELIVERY">未発送</option>
+          <option value="DELIVERED">発送済み</option>
+          <option value="COMPLETED">完了</option>
         </select>
       </div>
       <div class="col-md-3">
-        <button class="btn btn-primary btn-sm w-100" onclick="loadOrders()">邨槭ｊ霎ｼ繧</button>
+        <button class="btn btn-primary btn-sm w-100" onclick="loadOrders()">絞り込む</button>
       </div>
     </div>
   </div>
 
   <div id="listArea"><div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span></div></div>
 
-  <!-- 隧ｳ邏ｰ繝｢繝ｼ繝繝ｫ -->
+  <!-- 詳細モーダル -->
   <div class="modal fade" id="orderModal" tabindex="-1">
     <div class="modal-dialog modal-lg"><div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="modalTitle">豕ｨ譁・ｩｳ邏ｰ</h5>
+        <h5 class="modal-title" id="modalTitle">注文詳細</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="modalBody"></div>
@@ -65,7 +64,7 @@
 <script src="../shared/js/api.js"></script>
 <script src="../shared/js/admin-layout.js"></script>
 <script>
-initAdminLayout({ pageTitle: '豕ｨ譁・ｮ｡逅・, activeNav: 'orders' });
+initAdminLayout({ pageTitle: '注文管理', activeNav: 'orders' });
 
 let api;
 
@@ -76,12 +75,14 @@ Auth.init({
     api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
     api.admin.setToken(token);
 
-    // URL 繝代Λ繝｡繝ｼ繧ｿ縺ｧ繝輔ぅ繝ｫ繧ｿ險ｭ螳・    const evId     = qs.get('eventId');
+    // URL パラメータでフィルタ設定
+    const evId     = qs.get('eventId');
     const pStatus  = qs.get('paymentStatus');
     if (evId)    document.getElementById('filterEvent').dataset.presetId = evId;
     if (pStatus) document.getElementById('filterPayment').value = pStatus;
 
-    // 繧､繝吶Φ繝磯∈謚櫁い繧帝撼蜷梧悄縺ｧ蝓九ａ繧・    try {
+    // イベント選択肢を非同期で埋める
+    try {
       const events = await api.admin.listEvents();
       const sel = document.getElementById('filterEvent');
       events.forEach(ev => {
@@ -111,27 +112,27 @@ async function loadOrders() {
   try {
     const orders = await api.admin.listOrders(params);
     setHtml('#listArea', `
-      <p class="text-muted small mb-2">${orders.length} 莉ｶ</p>
+      <p class="text-muted small mb-2">${orders.length} 件</p>
       ${renderTable({
         cols: [
-          { label: '豕ｨ譁・分蜿ｷ', key: 'gmoOrderId', render: r =>
+          { label: '注文番号', key: 'gmoOrderId', render: r =>
             `<a href="#" onclick="showDetail('${esc(r.orderId)}');return false" class="font-monospace small">${esc(r.gmoOrderId)}</a>` },
-          { label: '豎ｺ貂・, key: 'paymentStatus', render: r => statusBadge(r.paymentStatus) },
-          { label: '縺雁ｱ翫￠', key: 'fulfillmentStatus', render: r => statusBadge(r.fulfillmentStatus) },
-          { label: '驥鷹｡・, key: 'totalJPY', render: r => fmtJPY(r.totalJPY) },
-          { label: '豕ｨ譁・律', key: 'createdAt', render: r => fmtDate(r.createdAt) },
+          { label: '決済', key: 'paymentStatus', render: r => statusBadge(r.paymentStatus) },
+          { label: 'お届け', key: 'fulfillmentStatus', render: r => statusBadge(r.fulfillmentStatus) },
+          { label: '金額', key: 'totalJPY', render: r => fmtJPY(r.totalJPY) },
+          { label: '注文日', key: 'createdAt', render: r => fmtDate(r.createdAt) },
           { label: '', key: '_act', render: r =>
-            `<button class="btn btn-sm btn-outline-primary" onclick="showDetail('${esc(r.orderId)}')">隧ｳ邏ｰ</button>` }
+            `<button class="btn btn-sm btn-outline-primary" onclick="showDetail('${esc(r.orderId)}')">詳細</button>` }
         ],
         rows: orders,
-        emptyMsg: '豕ｨ譁・′縺ゅｊ縺ｾ縺帙ｓ'
+        emptyMsg: '注文がありません'
       })}`);
   } catch (e) { showError('#listArea', e.message); }
 }
 
 async function showDetail(orderId) {
   const modal = new bootstrap.Modal(document.getElementById('orderModal'));
-  setHtml('#modalBody', '<div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span>隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ...</div>');
+  setHtml('#modalBody', '<div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span>読み込み中...</div>');
   modal.show();
 
   try {
@@ -146,36 +147,36 @@ async function showDetail(orderId) {
           <table class="table table-sm">
             <tbody>
               ${[
-                ['豕ｨ譁・分蜿ｷ', `<span class="font-monospace">${esc(o.gmoOrderId)}</span>`],
-                ['豎ｺ貂育憾諷・, statusBadge(o.paymentStatus)],
-                ['縺雁ｱ翫￠迥ｶ諷・, statusBadge(o.fulfillmentStatus)],
-                ['蝠・刀', esc(product ? product.name : o.productId)],
-                ['謨ｰ驥・, esc(String(o.qty))],
-                ['蜷郁ｨ・, fmtJPY(o.totalJPY)],
-                ['繧､繝吶Φ繝・, esc(ev ? ev.title : o.eventId)],
-                ['螳帛・', esc(performer ? performer.displayName : o.performerId)],
-                ['豕ｨ譁・律譎・, fmtDateTime(o.createdAt)],
-                ['豎ｺ貂亥ｮ御ｺ・, o.paidAt ? fmtDateTime(o.paidAt) : '窶・],
+                ['注文番号', `<span class="font-monospace">${esc(o.gmoOrderId)}</span>`],
+                ['決済状態', statusBadge(o.paymentStatus)],
+                ['お届け状態', statusBadge(o.fulfillmentStatus)],
+                ['商品', esc(product ? product.name : o.productId)],
+                ['数量', esc(String(o.qty))],
+                ['合計', fmtJPY(o.totalJPY)],
+                ['イベント', esc(ev ? ev.title : o.eventId)],
+                ['宛先', esc(performer ? performer.displayName : o.performerId)],
+                ['注文日時', fmtDateTime(o.createdAt)],
+                ['決済完了', o.paidAt ? fmtDateTime(o.paidAt) : '—'],
               ].map(([k,v]) => `<tr><th class="text-muted fw-normal" style="width:40%">${esc(k)}</th><td>${v}</td></tr>`).join('')}
             </tbody>
           </table>
         </div>
         <div class="col-md-6">
-          <h6>雍医ｊ荳ｻ</h6>
-          <p class="mb-1">${esc(o.isAnonymous ? '蛹ｿ蜷・ : (o.buyerName || '窶・))}</p>
+          <h6>贈り主</h6>
+          <p class="mb-1">${esc(o.isAnonymous ? '匿名' : (o.buyerName || '—'))}</p>
           <p class="mb-3 small text-muted">${esc(o.buyerEmail)}</p>
-          <h6>繝｡繝・そ繝ｼ繧ｸ</h6>
-          <p class="mb-1">${esc(o.messageToPerformer || '・医↑縺暦ｼ・)}</p>
-          <p class="small text-muted">蜈ｬ髢・ ${o.isMessagePublic ? '縺ｯ縺・ : '縺・＞縺・} / 蛹ｿ蜷・ ${o.isAnonymous ? '縺ｯ縺・ : '縺・＞縺・}</p>
+          <h6>メッセージ</h6>
+          <p class="mb-1">${esc(o.messageToPerformer || '（なし）')}</p>
+          <p class="small text-muted">公開: ${o.isMessagePublic ? 'はい' : 'いいえ'} / 匿名: ${o.isAnonymous ? 'はい' : 'いいえ'}</p>
         </div>
       </div>
       <hr>
-      <h6>縺雁ｱ翫￠迥ｶ諷九ｒ譖ｴ譁ｰ</h6>
+      <h6>お届け状態を更新</h6>
       <div class="d-flex gap-2 align-items-center">
         <select id="fulfillSelect" class="form-select" style="max-width:240px">
           ${FULFILL_STATUSES.map(s => `<option value="${esc(s)}" ${o.fulfillmentStatus === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
         </select>
-        <button class="btn btn-primary btn-sm" onclick="updateFulfill('${esc(o.orderId)}')">譖ｴ譁ｰ</button>
+        <button class="btn btn-primary btn-sm" onclick="updateFulfill('${esc(o.orderId)}')">更新</button>
       </div>`);
   } catch (e) {
     setHtml('#modalBody', `<div class="error-banner">${esc(e.message)}</div>`);
@@ -186,7 +187,7 @@ async function updateFulfill(orderId) {
   const status = document.getElementById('fulfillSelect').value;
   try {
     await api.admin.updateFulfillment(orderId, status);
-    toast('譖ｴ譁ｰ縺励∪縺励◆');
+    toast('更新しました');
     bootstrap.Modal.getInstance(document.getElementById('orderModal'))?.hide();
     loadOrders();
   } catch (e) { toast(e.message, 'danger'); }
@@ -194,4 +195,3 @@ async function updateFulfill(orderId) {
 </script>
 </body>
 </html>
-

@@ -1,10 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💐</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>蝠・刀邂｡逅・窶・縺ｯ縺ｪ縺溘・ Admin</title>
+  <title>商品管理 — はなたば Admin</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="../shared/css/style.css">
 </head>
@@ -12,47 +11,47 @@
 <div id="pageContent">
   <div id="viewList">
     <div class="d-flex justify-content-end mb-3">
-      <button class="btn btn-primary" onclick="showForm(null)">+ 蝠・刀霑ｽ蜉</button>
+      <button class="btn btn-primary" onclick="showForm(null)">+ 商品追加</button>
     </div>
     <div id="listArea"><div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span></div></div>
   </div>
 
   <div id="viewForm" class="d-none">
     <div class="d-flex align-items-center gap-2 mb-3">
-      <button class="btn btn-sm btn-outline-secondary" onclick="showList()">竊・荳隕ｧ縺ｫ謌ｻ繧・/button>
-      <h5 class="mb-0 fw-bold" id="formTitle">蝠・刀霑ｽ蜉</h5>
+      <button class="btn btn-sm btn-outline-secondary" onclick="showList()">← 一覧に戻る</button>
+      <h5 class="mb-0 fw-bold" id="formTitle">商品追加</h5>
     </div>
     <div id="formError" class="error-banner d-none mb-3"></div>
 
     <form id="productForm" novalidate style="max-width:600px">
       <div class="form-section">
-        <p class="form-section-title">蝠・刀諠・ｱ</p>
-        <div class="mb-3"><label class="form-label fw-semibold">蝠・刀蜷・<span class="text-danger">*</span></label>
+        <p class="form-section-title">商品情報</p>
+        <div class="mb-3"><label class="form-label fw-semibold">商品名 <span class="text-danger">*</span></label>
           <input type="text" class="form-control" name="name" required></div>
-        <div class="mb-3"><label class="form-label fw-semibold">繧ｫ繝・ざ繝ｪ <span class="text-danger">*</span></label>
+        <div class="mb-3"><label class="form-label fw-semibold">カテゴリ <span class="text-danger">*</span></label>
           <select class="form-select" name="category" required>
-            <option value="FLOWER">減 繝輔Λ繝ｯ繝ｼ</option>
-            <option value="ALCOHOL">左 縺企・</option>
+            <option value="FLOWER">🌸 フラワー</option>
+            <option value="ALCOHOL">🍶 お酒</option>
           </select></div>
-        <div class="mb-3"><label class="form-label fw-semibold">遞手ｾｼ萓｡譬ｼ・亥・・・<span class="text-danger">*</span></label>
+        <div class="mb-3"><label class="form-label fw-semibold">税込価格（円） <span class="text-danger">*</span></label>
           <input type="number" class="form-control" name="priceJPY" min="0" required></div>
-        <div class="mb-3"><label class="form-label">隱ｬ譏取枚</label>
+        <div class="mb-3"><label class="form-label">説明文</label>
           <textarea class="form-control" name="description" rows="3"></textarea></div>
-        <div class="mb-3"><label class="form-label">蝠・刀逕ｻ蜒酋RL</label>
+        <div class="mb-3"><label class="form-label">商品画像URL</label>
           <input type="url" class="form-control" name="imageUrl" placeholder="https://...">
           <div id="imgPreview" class="mt-2"></div></div>
-        <div class="mb-3"><label class="form-label">陦ｨ遉ｺ鬆・/label>
+        <div class="mb-3"><label class="form-label">表示順</label>
           <input type="number" class="form-control" name="sortOrder" min="1" value="1" style="width:120px"></div>
         <div id="activeSection" class="d-none">
           <div class="form-check form-switch">
             <input type="checkbox" class="form-check-input" name="isActive" id="isActiveChk" checked>
-            <label class="form-check-label" for="isActiveChk">雋ｩ螢ｲ荳ｭ・亥・髢具ｼ・/label>
+            <label class="form-check-label" for="isActiveChk">販売中（公開）</label>
           </div>
         </div>
       </div>
       <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary" id="saveBtn">菫晏ｭ・/button>
-        <button type="button" class="btn btn-outline-secondary" onclick="showList()">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="showList()">キャンセル</button>
       </div>
     </form>
   </div>
@@ -66,7 +65,7 @@
 <script src="../shared/js/api.js"></script>
 <script src="../shared/js/admin-layout.js"></script>
 <script>
-initAdminLayout({ pageTitle: '蝠・刀邂｡逅・, activeNav: 'products' });
+initAdminLayout({ pageTitle: '商品管理', activeNav: 'products' });
 
 let api, currentId = null;
 
@@ -88,23 +87,23 @@ async function loadList() {
     const products = await api.admin.listProducts();
     setHtml('#listArea', renderTable({
       cols: [
-        { label: '蝠・刀蜷・, key: 'name', render: r => `
+        { label: '商品名', key: 'name', render: r => `
           <div class="d-flex align-items-center gap-2">
-            ${r.imageUrl ? `<img src="${esc(r.imageUrl)}" style="width:40px;height:40px;object-fit:cover;border-radius:6px">` : '<span style="font-size:1.5rem">減</span>'}
+            ${r.imageUrl ? `<img src="${esc(r.imageUrl)}" style="width:40px;height:40px;object-fit:cover;border-radius:6px">` : '<span style="font-size:1.5rem">🌸</span>'}
             <span>${esc(r.name)}</span>
           </div>` },
-        { label: '繧ｫ繝・ざ繝ｪ', key: 'category', render: r => `<span class="badge ${r.category === 'FLOWER' ? 'bg-success' : 'bg-warning text-dark'}">${esc(r.category)}</span>` },
-        { label: '萓｡譬ｼ', key: 'priceJPY', render: r => fmtJPY(r.priceJPY) },
-        { label: '鬆・ｺ・, key: 'sortOrder' },
-        { label: '迥ｶ諷・, key: 'isActive', render: r => r.isActive ? '<span class="badge bg-success">雋ｩ螢ｲ荳ｭ</span>' : '<span class="badge bg-secondary">髱櫁｡ｨ遉ｺ</span>' },
+        { label: 'カテゴリ', key: 'category', render: r => `<span class="badge ${r.category === 'FLOWER' ? 'bg-success' : 'bg-warning text-dark'}">${esc(r.category)}</span>` },
+        { label: '価格', key: 'priceJPY', render: r => fmtJPY(r.priceJPY) },
+        { label: '順序', key: 'sortOrder' },
+        { label: '状態', key: 'isActive', render: r => r.isActive ? '<span class="badge bg-success">販売中</span>' : '<span class="badge bg-secondary">非表示</span>' },
         { label: '', key: '_act', render: r => `
           <div class="d-flex gap-1">
-            <button class="btn btn-sm btn-outline-primary" onclick="showForm('${esc(r.productId)}')">邱ｨ髮・/button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="toggleProduct('${esc(r.productId)}', ${!r.isActive})">${r.isActive ? '髱櫁｡ｨ遉ｺ' : '陦ｨ遉ｺ'}</button>
+            <button class="btn btn-sm btn-outline-primary" onclick="showForm('${esc(r.productId)}')">編集</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="toggleProduct('${esc(r.productId)}', ${!r.isActive})">${r.isActive ? '非表示' : '表示'}</button>
           </div>` }
       ],
       rows: products,
-      emptyMsg: '蝠・刀縺檎匳骭ｲ縺輔ｌ縺ｦ縺・∪縺帙ｓ'
+      emptyMsg: '商品が登録されていません'
     }));
   } catch (e) { showError('#listArea', e.message); }
 }
@@ -112,7 +111,7 @@ async function loadList() {
 async function toggleProduct(productId, isActive) {
   try {
     await api.admin.toggleProduct(productId, isActive);
-    toast(isActive ? '雋ｩ螢ｲ荳ｭ縺ｫ縺励∪縺励◆' : '髱櫁｡ｨ遉ｺ縺ｫ縺励∪縺励◆');
+    toast(isActive ? '販売中にしました' : '非表示にしました');
     loadList();
   } catch (e) { toast(e.message, 'danger'); }
 }
@@ -126,7 +125,7 @@ async function showForm(productId) {
   document.getElementById('productForm').reset();
 
   if (productId) {
-    setText('#formTitle', '蝠・刀邱ｨ髮・);
+    setText('#formTitle', '商品編集');
     show('#activeSection');
     try {
       const p = await api.admin.getProduct(productId);
@@ -139,7 +138,7 @@ async function showForm(productId) {
       updateImgPreview(p.imageUrl);
     } catch (e) { showError('#formError', e.message); }
   } else {
-    setText('#formTitle', '蝠・刀霑ｽ蜉');
+    setText('#formTitle', '商品追加');
     hide('#activeSection');
   }
 }
@@ -155,21 +154,20 @@ $('[name=imageUrl]')?.addEventListener('input', e => updateImgPreview(e.target.v
 document.getElementById('productForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('saveBtn');
-  btn.disabled = true; btn.textContent = '菫晏ｭ倅ｸｭ...';
+  btn.disabled = true; btn.textContent = '保存中...';
   hide('#formError');
 
   const data = formToObj(e.target);
   try {
     if (currentId) await api.admin.updateProduct({ id: currentId, ...data });
     else           await api.admin.createProduct(data);
-    toast('菫晏ｭ倥＠縺ｾ縺励◆');
+    toast('保存しました');
     showList();
   } catch (err) {
     showError('#formError', err.message);
   }
-  btn.disabled = false; btn.textContent = '菫晏ｭ・;
+  btn.disabled = false; btn.textContent = '保存';
 });
 </script>
 </body>
 </html>
-

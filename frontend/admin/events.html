@@ -1,132 +1,131 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💐</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>繧､繝吶Φ繝育ｮ｡逅・窶・縺ｯ縺ｪ縺溘・ Admin</title>
+  <title>イベント管理 — はなたば Admin</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="../shared/css/style.css">
 </head>
 <body>
 <div id="pageContent">
-  <!-- 繧､繝吶Φ繝井ｸ隕ｧ / 繝輔か繝ｼ繝繧貞虚逧・↓蛻・ｊ譖ｿ縺・-->
+  <!-- イベント一覧 / フォームを動的に切り替え -->
   <div id="viewList">
     <div class="d-flex align-items-center justify-content-between mb-3">
       <div></div>
-      <button class="btn btn-primary" onclick="showForm(null)">+ 繧､繝吶Φ繝井ｽ懈・</button>
+      <button class="btn btn-primary" onclick="showForm(null)">+ イベント作成</button>
     </div>
     <div id="eventTableArea"><div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span></div></div>
   </div>
 
-  <!-- 邱ｨ髮・ヵ繧ｩ繝ｼ繝・亥・譛滄撼陦ｨ遉ｺ・・-->
+  <!-- 編集フォーム（初期非表示） -->
   <div id="viewForm" class="d-none">
     <div class="d-flex align-items-center gap-2 mb-3">
-      <button class="btn btn-sm btn-outline-secondary" onclick="showList()">竊・荳隕ｧ縺ｫ謌ｻ繧・/button>
-      <h5 class="mb-0 fw-bold" id="formTitle">繧､繝吶Φ繝井ｽ懈・</h5>
+      <button class="btn btn-sm btn-outline-secondary" onclick="showList()">← 一覧に戻る</button>
+      <h5 class="mb-0 fw-bold" id="formTitle">イベント作成</h5>
     </div>
     <div id="formError" class="error-banner d-none mb-3"></div>
 
     <form id="eventForm" novalidate>
       <div class="row g-3">
-        <!-- 蟾ｦ繧ｫ繝ｩ繝 -->
+        <!-- 左カラム -->
         <div class="col-md-8">
           <div class="form-section">
-            <p class="form-section-title">蝓ｺ譛ｬ諠・ｱ</p>
-            <div class="mb-3"><label class="form-label fw-semibold">繧ｿ繧､繝医Ν <span class="text-danger">*</span></label>
+            <p class="form-section-title">基本情報</p>
+            <div class="mb-3"><label class="form-label fw-semibold">タイトル <span class="text-danger">*</span></label>
               <input type="text" class="form-control" name="title" required></div>
             <div class="row g-2">
-              <div class="col-6"><label class="form-label">繧ｸ繝｣繝ｳ繝ｫ</label>
-                <input type="text" class="form-control" name="genre" placeholder="謇捺･ｽ蝎ｨ/繝槭Μ繝ｳ繝・></div>
-              <div class="col-6"><label class="form-label">繧､繝吶Φ繝育ｨｮ蛻･</label>
-                <input type="text" class="form-control" name="category" placeholder="繝・ぅ繝翫・繧ｷ繝ｧ繝ｼ"></div>
+              <div class="col-6"><label class="form-label">ジャンル</label>
+                <input type="text" class="form-control" name="genre" placeholder="打楽器/マリンバ"></div>
+              <div class="col-6"><label class="form-label">イベント種別</label>
+                <input type="text" class="form-control" name="category" placeholder="ディナーショー"></div>
             </div>
-            <div class="mt-3"><label class="form-label">隱ｬ譏取枚</label>
+            <div class="mt-3"><label class="form-label">説明文</label>
               <textarea class="form-control" name="description" rows="4"></textarea></div>
-            <div class="mt-3"><label class="form-label">蛯呵・・迚ｹ險倅ｺ矩・/label>
+            <div class="mt-3"><label class="form-label">備考・特記事項</label>
               <textarea class="form-control" name="eventNotes" rows="3"></textarea></div>
-            <div class="mt-3"><label class="form-label">縺雁撫縺・粋繧上○蜈茨ｼ亥・髢具ｼ・/label>
+            <div class="mt-3"><label class="form-label">お問い合わせ先（公開）</label>
               <input type="text" class="form-control" name="contactInfo"></div>
-            <div class="mt-3"><label class="form-label">蟾ｮ縺怜・繧悟女莉倡ｷ蛻・律譎・/label>
+            <div class="mt-3"><label class="form-label">差し入れ受付締切日時</label>
               <input type="datetime-local" class="form-control" name="giftDeadlineAt"></div>
           </div>
 
-          <!-- 繧ｻ繝・す繝ｧ繝ｳ・育ｷｨ髮・凾縺ｮ縺ｿ・・-->
+          <!-- セッション（編集時のみ） -->
           <div id="sessionsSection" class="d-none">
             <div class="form-section">
-              <p class="form-section-title">蜈ｬ貍泌屓・医そ繝・す繝ｧ繝ｳ・・/p>
+              <p class="form-section-title">公演回（セッション）</p>
               <div id="sessionList" class="mb-3"></div>
               <div class="border rounded p-3 bg-light">
-                <p class="small fw-bold mb-2">繧ｻ繝・す繝ｧ繝ｳ繧定ｿｽ蜉</p>
+                <p class="small fw-bold mb-2">セッションを追加</p>
                 <div class="row g-2 mb-2">
-                  <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="newSessionLabel" placeholder="陦ｨ遉ｺ蜷搾ｼ井ｾ・ 隨ｬ1驛ｨ・・></div>
+                  <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="newSessionLabel" placeholder="表示名（例: 第1部）"></div>
                   <div class="col-md-4"><input type="datetime-local" class="form-control form-control-sm" id="newSessionStart"></div>
                   <div class="col-md-4"><input type="datetime-local" class="form-control form-control-sm" id="newSessionEnd"></div>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addSession()">霑ｽ蜉</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addSession()">追加</button>
               </div>
             </div>
           </div>
 
-          <!-- 蛻ｸ遞ｮ・育ｷｨ髮・凾縺ｮ縺ｿ・・-->
+          <!-- 券種（編集時のみ） -->
           <div id="ticketsSection" class="d-none">
             <div class="form-section">
-              <p class="form-section-title">蛻ｸ遞ｮ</p>
+              <p class="form-section-title">券種</p>
               <div id="ticketList" class="mb-3"></div>
               <div class="border rounded p-3 bg-light">
-                <p class="small fw-bold mb-2">蛻ｸ遞ｮ繧定ｿｽ蜉</p>
+                <p class="small fw-bold mb-2">券種を追加</p>
                 <div class="row g-2 mb-2">
-                  <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="newTicketLabel" placeholder="蛻ｸ遞ｮ蜷搾ｼ井ｾ・ 荳闊ｬ・・></div>
-                  <div class="col-md-4"><input type="number" class="form-control form-control-sm" id="newTicketPrice" placeholder="萓｡譬ｼ・亥・・・ min="0"></div>
-                  <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="newTicketDesc" placeholder="蜷ｫ縺ｾ繧後ｋ繧ゅ・"></div>
+                  <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="newTicketLabel" placeholder="券種名（例: 一般）"></div>
+                  <div class="col-md-4"><input type="number" class="form-control form-control-sm" id="newTicketPrice" placeholder="価格（円）" min="0"></div>
+                  <div class="col-md-4"><input type="text" class="form-control form-control-sm" id="newTicketDesc" placeholder="含まれるもの"></div>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTicket()">霑ｽ蜉</button>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addTicket()">追加</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 蜿ｳ繧ｫ繝ｩ繝 -->
+        <!-- 右カラム -->
         <div class="col-md-4">
           <div class="form-section">
-            <p class="form-section-title">莨壼ｴ諠・ｱ</p>
-            <div class="mb-2"><label class="form-label">莨壼ｴ蜷・<span class="text-danger">*</span></label>
+            <p class="form-section-title">会場情報</p>
+            <div class="mb-2"><label class="form-label">会場名 <span class="text-danger">*</span></label>
               <input type="text" class="form-control" name="venueName" required></div>
-            <div class="mb-2"><label class="form-label">驛ｽ驕灘ｺ懃恁</label>
-              <input type="text" class="form-control" name="venuePref" placeholder="譚ｱ莠ｬ驛ｽ"></div>
-            <div class="mb-2"><label class="form-label">蟶ょ玄逕ｺ譚・/label>
+            <div class="mb-2"><label class="form-label">都道府県</label>
+              <input type="text" class="form-control" name="venuePref" placeholder="東京都"></div>
+            <div class="mb-2"><label class="form-label">市区町村</label>
               <input type="text" class="form-control" name="venueCity"></div>
-            <div class="mb-2"><label class="form-label">逡ｪ蝨ｰ莉･髯・/label>
+            <div class="mb-2"><label class="form-label">番地以降</label>
               <input type="text" class="form-control" name="venueAddress"></div>
-            <div class="mb-2"><label class="form-label">驛ｵ萓ｿ逡ｪ蜿ｷ</label>
+            <div class="mb-2"><label class="form-label">郵便番号</label>
               <input type="text" class="form-control" name="venuePostalCode" placeholder="100-0001"></div>
-            <div class="mb-2"><label class="form-label">繧｢繧ｯ繧ｻ繧ｹ諠・ｱ</label>
+            <div class="mb-2"><label class="form-label">アクセス情報</label>
               <input type="text" class="form-control" name="venueAccess"></div>
           </div>
           <div class="form-section">
-            <p class="form-section-title">逕ｻ蜒上・繝ｪ繝ｳ繧ｯ</p>
-            <div class="mb-2"><label class="form-label">繧ｫ繝舌・逕ｻ蜒酋RL</label>
+            <p class="form-section-title">画像・リンク</p>
+            <div class="mb-2"><label class="form-label">カバー画像URL</label>
               <input type="url" class="form-control" name="coverImageUrl"></div>
-            <div class="mb-2"><label class="form-label">繝輔Λ繧､繝､繝ｼ逕ｻ蜒酋RL</label>
+            <div class="mb-2"><label class="form-label">フライヤー画像URL</label>
               <input type="url" class="form-control" name="flyerImageUrl"></div>
-            <div class="mb-2"><label class="form-label">繝√こ繝・ヨ雋ｩ螢ｲURL</label>
+            <div class="mb-2"><label class="form-label">チケット販売URL</label>
               <input type="url" class="form-control" name="ticketUrl"></div>
           </div>
         </div>
       </div>
 
       <div class="d-flex gap-2 mt-2">
-        <button type="submit" class="btn btn-primary" id="saveBtn">菫晏ｭ・/button>
-        <button type="button" class="btn btn-outline-secondary" onclick="showList()">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="showList()">キャンセル</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- 蜃ｺ貍碑・牡繧雁ｽ薙※繝｢繝ｼ繝繝ｫ -->
+<!-- 出演者割り当てモーダル -->
 <div class="modal fade" id="performerModal" tabindex="-1">
   <div class="modal-dialog"><div class="modal-content">
-    <div class="modal-header"><h5 class="modal-title">蜃ｺ貍碑・牡繧雁ｽ薙※</h5>
+    <div class="modal-header"><h5 class="modal-title">出演者割り当て</h5>
       <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body" id="performerModalBody"></div>
   </div></div>
@@ -140,7 +139,7 @@
 <script src="../shared/js/api.js"></script>
 <script src="../shared/js/admin-layout.js"></script>
 <script>
-initAdminLayout({ pageTitle: '繧､繝吶Φ繝育ｮ｡逅・, activeNav: 'events' });
+initAdminLayout({ pageTitle: 'イベント管理', activeNav: 'events' });
 
 let api, currentEventId = null;
 
@@ -151,14 +150,15 @@ Auth.init({
     api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
     api.admin.setToken(token);
     loadEventList();
-    // URL 縺九ｉ邱ｨ髮・ｯｾ雎｡繧貞叙蠕・    const editId = qs.get('edit');
+    // URL から編集対象を取得
+    const editId = qs.get('edit');
     if (editId) showForm(editId);
   },
   onLogout: () => { location.href = 'index.html'; }
 });
 if (!Auth.isLoggedIn()) location.href = 'index.html';
 
-// 笏笏 荳隕ｧ 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+// ── 一覧 ───────────────────────────────────────────
 
 async function loadEventList() {
   showLoading('#eventTableArea');
@@ -166,20 +166,20 @@ async function loadEventList() {
     const events = await api.admin.listEvents();
     setHtml('#eventTableArea', renderTable({
       cols: [
-        { key: 'title',   label: '繧ｿ繧､繝医Ν' },
-        { key: 'status',  label: '迥ｶ諷・, render: r => statusBadge(r.status) },
-        { key: 'venueName', label: '莨壼ｴ' },
-        { key: 'giftDeadlineAt', label: '邱蛻・, render: r => fmtDate(r.giftDeadlineAt) },
-        { key: '_act', label: '謫堺ｽ・, render: r => `
+        { key: 'title',   label: 'タイトル' },
+        { key: 'status',  label: '状態', render: r => statusBadge(r.status) },
+        { key: 'venueName', label: '会場' },
+        { key: 'giftDeadlineAt', label: '締切', render: r => fmtDate(r.giftDeadlineAt) },
+        { key: '_act', label: '操作', render: r => `
           <div class="d-flex gap-1 flex-wrap">
-            <button class="btn btn-sm btn-outline-primary" onclick="showForm('${esc(r.eventId)}')">邱ｨ髮・/button>
-            ${r.status === 'DRAFT'      ? `<button class="btn btn-sm btn-success"  onclick="changeStatus('${esc(r.eventId)}','publish')">蜈ｬ髢・/button>` : ''}
-            ${r.status === 'PUBLISHED'  ? `<button class="btn btn-sm btn-warning"  onclick="changeStatus('${esc(r.eventId)}','close')">邨ゆｺ・/button>` : ''}
-            <a href="orders.html?eventId=${esc(r.eventId)}" class="btn btn-sm btn-outline-secondary">豕ｨ譁・/a>
+            <button class="btn btn-sm btn-outline-primary" onclick="showForm('${esc(r.eventId)}')">編集</button>
+            ${r.status === 'DRAFT'      ? `<button class="btn btn-sm btn-success"  onclick="changeStatus('${esc(r.eventId)}','publish')">公開</button>` : ''}
+            ${r.status === 'PUBLISHED'  ? `<button class="btn btn-sm btn-warning"  onclick="changeStatus('${esc(r.eventId)}','close')">終了</button>` : ''}
+            <a href="orders.html?eventId=${esc(r.eventId)}" class="btn btn-sm btn-outline-secondary">注文</a>
           </div>` }
       ],
       rows: events,
-      emptyMsg: '繧､繝吶Φ繝医′縺ゅｊ縺ｾ縺帙ｓ縲ゅ・ 繧､繝吶Φ繝井ｽ懈・縲阪°繧芽ｿｽ蜉縺励※縺上□縺輔＞縲・
+      emptyMsg: 'イベントがありません。「+ イベント作成」から追加してください。'
     }));
   } catch (e) { showError('#eventTableArea', e.message); }
 }
@@ -188,12 +188,12 @@ async function changeStatus(eventId, action) {
   try {
     if (action === 'publish') await api.admin.publishEvent(eventId);
     else                      await api.admin.closeEvent(eventId);
-    toast(action === 'publish' ? '蜈ｬ髢九＠縺ｾ縺励◆' : '邨ゆｺ・＠縺ｾ縺励◆');
+    toast(action === 'publish' ? '公開しました' : '終了しました');
     loadEventList();
   } catch (e) { toast(e.message, 'danger'); }
 }
 
-// 笏笏 繝輔か繝ｼ繝 笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+// ── フォーム ────────────────────────────────────────
 
 function showList() {
   hide('#viewForm'); show('#viewList');
@@ -210,16 +210,17 @@ async function showForm(eventId) {
   form.reset();
 
   if (eventId) {
-    setText('#formTitle', '繧､繝吶Φ繝育ｷｨ髮・);
+    setText('#formTitle', 'イベント編集');
     showLoading('#formError');
     try {
       const { event: ev, sessions, ticketTypes } = await api.admin.getEvent(eventId);
       hide('#formError');
-      // 繝輔か繝ｼ繝縺ｫ蛟､繧定ｨｭ螳・      Object.entries(ev).forEach(([k, v]) => {
+      // フォームに値を設定
+      Object.entries(ev).forEach(([k, v]) => {
         const el = form.elements[k];
         if (el && v != null) {
           if (el.type === 'datetime-local') {
-            // ISO 竊・datetime-local 蠖｢蠑上↓螟画鋤
+            // ISO → datetime-local 形式に変換
             el.value = v ? v.slice(0, 16) : '';
           } else {
             el.value = v;
@@ -232,51 +233,51 @@ async function showForm(eventId) {
       renderTicketList(ticketTypes);
     } catch (e) { showError('#formError', e.message); }
   } else {
-    setText('#formTitle', '繧､繝吶Φ繝井ｽ懈・');
+    setText('#formTitle', 'イベント作成');
     hide('#sessionsSection');
     hide('#ticketsSection');
   }
 }
 
-// 繝輔か繝ｼ繝騾∽ｿ｡
+// フォーム送信
 document.getElementById('eventForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('saveBtn');
-  btn.disabled = true; btn.textContent = '菫晏ｭ倅ｸｭ...';
+  btn.disabled = true; btn.textContent = '保存中...';
   hide('#formError');
 
   const data = formToObj(e.target);
   try {
     if (currentEventId) {
       await api.admin.updateEvent({ id: currentEventId, ...data });
-      toast('菫晏ｭ倥＠縺ｾ縺励◆');
+      toast('保存しました');
     } else {
       const ev = await api.admin.createEvent(data);
-      toast('菴懈・縺励∪縺励◆');
+      toast('作成しました');
       currentEventId = ev.eventId;
       await showForm(ev.eventId);
     }
   } catch (err) {
     showError('#formError', err.message);
   }
-  btn.disabled = false; btn.textContent = '菫晏ｭ・;
+  btn.disabled = false; btn.textContent = '保存';
 });
 
-// 笏笏 繧ｻ繝・す繝ｧ繝ｳ邂｡逅・笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+// ── セッション管理 ─────────────────────────────────
 
 function renderSessionList(sessions) {
   if (!sessions.length) {
-    setHtml('#sessionList', '<p class="text-muted small">繧ｻ繝・す繝ｧ繝ｳ縺後≠繧翫∪縺帙ｓ</p>');
+    setHtml('#sessionList', '<p class="text-muted small">セッションがありません</p>');
     return;
   }
   setHtml('#sessionList', `<table class="table table-sm mb-0">
-    <thead><tr><th>繝ｩ繝吶Ν</th><th>髢句ｧ・/th><th>邨ゆｺ・/th><th></th></tr></thead>
+    <thead><tr><th>ラベル</th><th>開始</th><th>終了</th><th></th></tr></thead>
     <tbody>
       ${sessions.map(s => `<tr>
         <td>${esc(s.sessionLabel)}</td>
         <td>${fmtDateTime(s.startAt)}</td>
         <td>${fmtDateTime(s.endAt)}</td>
-        <td><button class="btn btn-sm btn-outline-danger" onclick="deleteSession('${esc(s.sessionId)}')">蜑企勁</button></td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick="deleteSession('${esc(s.sessionId)}')">削除</button></td>
       </tr>`).join('')}
     </tbody></table>`);
 }
@@ -285,10 +286,10 @@ async function addSession() {
   const label = document.getElementById('newSessionLabel').value.trim();
   const start = document.getElementById('newSessionStart').value;
   const end   = document.getElementById('newSessionEnd').value;
-  if (!label || !start) { toast('陦ｨ遉ｺ蜷阪→髢句ｧ区凾蛻ｻ縺ｯ蠢・医〒縺・, 'warning'); return; }
+  if (!label || !start) { toast('表示名と開始時刻は必須です', 'warning'); return; }
   try {
     await api.admin.createSession({ eventId: currentEventId, sessionLabel: label, startAt: start, endAt: end || undefined });
-    toast('霑ｽ蜉縺励∪縺励◆');
+    toast('追加しました');
     const { sessions } = await api.admin.getEvent(currentEventId);
     renderSessionList(sessions);
     document.getElementById('newSessionLabel').value = '';
@@ -298,30 +299,30 @@ async function addSession() {
 }
 
 async function deleteSession(sessionId) {
-  if (!confirm('縺薙・繧ｻ繝・す繝ｧ繝ｳ繧貞炎髯､縺励∪縺吶°・・)) return;
+  if (!confirm('このセッションを削除しますか？')) return;
   try {
     await api.admin.deleteSession({ eventId: currentEventId, sessionId });
-    toast('蜑企勁縺励∪縺励◆');
+    toast('削除しました');
     const { sessions } = await api.admin.getEvent(currentEventId);
     renderSessionList(sessions);
   } catch (e) { toast(e.message, 'danger'); }
 }
 
-// 笏笏 蛻ｸ遞ｮ邂｡逅・笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏笏
+// ── 券種管理 ───────────────────────────────────────
 
 function renderTicketList(ticketTypes) {
   if (!ticketTypes.length) {
-    setHtml('#ticketList', '<p class="text-muted small">蛻ｸ遞ｮ縺後≠繧翫∪縺帙ｓ</p>');
+    setHtml('#ticketList', '<p class="text-muted small">券種がありません</p>');
     return;
   }
   setHtml('#ticketList', `<table class="table table-sm mb-0">
-    <thead><tr><th>蛻ｸ遞ｮ蜷・/th><th>萓｡譬ｼ</th><th>隱ｬ譏・/th><th></th></tr></thead>
+    <thead><tr><th>券種名</th><th>価格</th><th>説明</th><th></th></tr></thead>
     <tbody>
       ${ticketTypes.map(t => `<tr>
         <td>${esc(t.label)}</td>
         <td>${fmtJPY(t.priceJPY)}</td>
         <td>${esc(t.description)}</td>
-        <td><button class="btn btn-sm btn-outline-danger" onclick="deleteTicket('${esc(t.ticketTypeId)}')">蜑企勁</button></td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick="deleteTicket('${esc(t.ticketTypeId)}')">削除</button></td>
       </tr>`).join('')}
     </tbody></table>`);
 }
@@ -330,10 +331,10 @@ async function addTicket() {
   const label = document.getElementById('newTicketLabel').value.trim();
   const price = document.getElementById('newTicketPrice').value;
   const desc  = document.getElementById('newTicketDesc').value;
-  if (!label || price === '') { toast('蛻ｸ遞ｮ蜷阪→萓｡譬ｼ縺ｯ蠢・医〒縺・, 'warning'); return; }
+  if (!label || price === '') { toast('券種名と価格は必須です', 'warning'); return; }
   try {
     await api.admin.createTicketType({ eventId: currentEventId, label, priceJPY: Number(price), description: desc });
-    toast('霑ｽ蜉縺励∪縺励◆');
+    toast('追加しました');
     const { ticketTypes } = await api.admin.getEvent(currentEventId);
     renderTicketList(ticketTypes);
     document.getElementById('newTicketLabel').value = '';
@@ -343,10 +344,10 @@ async function addTicket() {
 }
 
 async function deleteTicket(ticketTypeId) {
-  if (!confirm('縺薙・蛻ｸ遞ｮ繧貞炎髯､縺励∪縺吶°・・)) return;
+  if (!confirm('この券種を削除しますか？')) return;
   try {
     await api.admin.deleteTicketType({ eventId: currentEventId, ticketTypeId });
-    toast('蜑企勁縺励∪縺励◆');
+    toast('削除しました');
     const { ticketTypes } = await api.admin.getEvent(currentEventId);
     renderTicketList(ticketTypes);
   } catch (e) { toast(e.message, 'danger'); }
@@ -354,4 +355,3 @@ async function deleteTicket(ticketTypeId) {
 </script>
 </body>
 </html>
-

@@ -1,10 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💐</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>繝ｦ繝ｼ繧ｶ繝ｼ邂｡逅・窶・縺ｯ縺ｪ縺溘・ Admin</title>
+  <title>ユーザー管理 — はなたば Admin</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="../shared/css/style.css">
 </head>
@@ -12,49 +11,49 @@
 <div id="pageContent">
   <div id="viewList">
     <div class="d-flex justify-content-end mb-3">
-      <button class="btn btn-primary" onclick="showForm(null)">+ 繝ｦ繝ｼ繧ｶ繝ｼ霑ｽ蜉</button>
+      <button class="btn btn-primary" onclick="showForm(null)">+ ユーザー追加</button>
     </div>
     <div id="listArea"><div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span></div></div>
   </div>
 
   <div id="viewForm" class="d-none">
     <div class="d-flex align-items-center gap-2 mb-3">
-      <button class="btn btn-sm btn-outline-secondary" onclick="showList()">竊・荳隕ｧ縺ｫ謌ｻ繧・/button>
-      <h5 class="mb-0 fw-bold" id="formTitle">繝ｦ繝ｼ繧ｶ繝ｼ霑ｽ蜉</h5>
+      <button class="btn btn-sm btn-outline-secondary" onclick="showList()">← 一覧に戻る</button>
+      <h5 class="mb-0 fw-bold" id="formTitle">ユーザー追加</h5>
     </div>
     <div id="formError" class="error-banner d-none mb-3"></div>
 
     <form id="userForm" novalidate style="max-width:560px">
       <div class="form-section">
-        <p class="form-section-title">繝ｦ繝ｼ繧ｶ繝ｼ諠・ｱ</p>
-        <div class="mb-3"><label class="form-label fw-semibold">陦ｨ遉ｺ蜷・<span class="text-danger">*</span></label>
+        <p class="form-section-title">ユーザー情報</p>
+        <div class="mb-3"><label class="form-label fw-semibold">表示名 <span class="text-danger">*</span></label>
           <input type="text" class="form-control" name="displayName" required></div>
-        <div class="mb-3"><label class="form-label fw-semibold">繝｡繝ｼ繝ｫ繧｢繝峨Ξ繧ｹ・・oogle 繧｢繧ｫ繧ｦ繝ｳ繝茨ｼ・<span class="text-danger">*</span></label>
+        <div class="mb-3"><label class="form-label fw-semibold">メールアドレス（Google アカウント） <span class="text-danger">*</span></label>
           <input type="email" class="form-control" name="email" required></div>
-        <div class="mb-3"><label class="form-label fw-semibold">繝ｭ繝ｼ繝ｫ <span class="text-danger">*</span></label>
+        <div class="mb-3"><label class="form-label fw-semibold">ロール <span class="text-danger">*</span></label>
           <select class="form-select" name="role" id="roleSelect" required onchange="onRoleChange()">
-            <option value="ORGANIZER">ORGANIZER・井ｸｻ蛯ｬ閠・ｼ・/option>
-            <option value="PERFORMER">PERFORMER・亥・貍碑・ｼ・/option>
-            <option value="ADMIN">ADMIN・亥・讓ｩ髯撰ｼ・/option>
+            <option value="ORGANIZER">ORGANIZER（主催者）</option>
+            <option value="PERFORMER">PERFORMER（出演者）</option>
+            <option value="ADMIN">ADMIN（全権限）</option>
           </select></div>
         <div id="orgIdField" class="mb-3">
-          <label class="form-label">荳ｻ蛯ｬ閠・D・・RGANIZER 縺ｮ蝣ｴ蜷茨ｼ・/label>
+          <label class="form-label">主催者ID（ORGANIZER の場合）</label>
           <input type="text" class="form-control" name="organizerId" placeholder="ORG-xxx">
-          <div class="form-text">遨ｺ谺・・蝣ｴ蜷医・ userId 縺後◎縺ｮ縺ｾ縺ｾ菴ｿ繧上ｌ縺ｾ縺吶・/div>
+          <div class="form-text">空欄の場合は userId がそのまま使われます。</div>
         </div>
         <div id="perfIdField" class="mb-3 d-none">
-          <label class="form-label">蜃ｺ貍碑・D・・ERFORMER 縺ｮ蝣ｴ蜷茨ｼ・/label>
+          <label class="form-label">出演者ID（PERFORMER の場合）</label>
           <input type="text" class="form-control" name="performerId" placeholder="PERF-xxx"></div>
         <div id="activeSection" class="d-none">
           <div class="form-check form-switch">
             <input type="checkbox" class="form-check-input" name="isActive" id="isActiveChk" checked>
-            <label class="form-check-label" for="isActiveChk">譛牙柑</label>
+            <label class="form-check-label" for="isActiveChk">有効</label>
           </div>
         </div>
       </div>
       <div class="d-flex gap-2">
-        <button type="submit" class="btn btn-primary" id="saveBtn">菫晏ｭ・/button>
-        <button type="button" class="btn btn-outline-secondary" onclick="showList()">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
+        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="showList()">キャンセル</button>
       </div>
     </form>
   </div>
@@ -68,7 +67,7 @@
 <script src="../shared/js/api.js"></script>
 <script src="../shared/js/admin-layout.js"></script>
 <script>
-initAdminLayout({ pageTitle: '繝ｦ繝ｼ繧ｶ繝ｼ邂｡逅・, activeNav: 'users' });
+initAdminLayout({ pageTitle: 'ユーザー管理', activeNav: 'users' });
 
 let api, currentId = null;
 
@@ -97,18 +96,18 @@ async function loadList() {
     const users = await api.admin.listUsers();
     setHtml('#listArea', renderTable({
       cols: [
-        { label: '蜷榊燕', key: 'displayName' },
-        { label: '繝｡繝ｼ繝ｫ', key: 'email' },
-        { label: '繝ｭ繝ｼ繝ｫ', key: 'role', render: r => `<span class="badge bg-secondary">${esc(r.role)}</span>` },
-        { label: '迥ｶ諷・, key: 'isActive', render: r => r.isActive ? '<span class="badge bg-success">譛牙柑</span>' : '<span class="badge bg-danger">辟｡蜉ｹ</span>' },
+        { label: '名前', key: 'displayName' },
+        { label: 'メール', key: 'email' },
+        { label: 'ロール', key: 'role', render: r => `<span class="badge bg-secondary">${esc(r.role)}</span>` },
+        { label: '状態', key: 'isActive', render: r => r.isActive ? '<span class="badge bg-success">有効</span>' : '<span class="badge bg-danger">無効</span>' },
         { label: '', key: '_act', render: r => `
           <div class="d-flex gap-1">
-            <button class="btn btn-sm btn-outline-primary" onclick="showForm('${esc(r.userId)}')">邱ｨ髮・/button>
-            ${r.isActive ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivate('${esc(r.userId)}')">辟｡蜉ｹ蛹・/button>` : ''}
+            <button class="btn btn-sm btn-outline-primary" onclick="showForm('${esc(r.userId)}')">編集</button>
+            ${r.isActive ? `<button class="btn btn-sm btn-outline-danger" onclick="deactivate('${esc(r.userId)}')">無効化</button>` : ''}
           </div>` }
       ],
       rows: users,
-      emptyMsg: '繝ｦ繝ｼ繧ｶ繝ｼ縺後＞縺ｾ縺帙ｓ'
+      emptyMsg: 'ユーザーがいません'
     }));
   } catch (e) { showError('#listArea', e.message); }
 }
@@ -123,7 +122,7 @@ async function showForm(userId) {
   hide('#activeSection');
 
   if (userId) {
-    setText('#formTitle', '繝ｦ繝ｼ繧ｶ繝ｼ邱ｨ髮・);
+    setText('#formTitle', 'ユーザー編集');
     show('#activeSection');
     try {
       const u = await api.admin.getUser(userId);
@@ -135,16 +134,16 @@ async function showForm(userId) {
       onRoleChange();
     } catch (e) { showError('#formError', e.message); }
   } else {
-    setText('#formTitle', '繝ｦ繝ｼ繧ｶ繝ｼ霑ｽ蜉');
+    setText('#formTitle', 'ユーザー追加');
     onRoleChange();
   }
 }
 
 async function deactivate(userId) {
-  if (!confirm('縺薙・繝ｦ繝ｼ繧ｶ繝ｼ繧堤┌蜉ｹ蛹悶＠縺ｾ縺吶°・・)) return;
+  if (!confirm('このユーザーを無効化しますか？')) return;
   try {
     await api.admin.deactivateUser(userId);
-    toast('辟｡蜉ｹ蛹悶＠縺ｾ縺励◆');
+    toast('無効化しました');
     loadList();
   } catch (e) { toast(e.message, 'danger'); }
 }
@@ -152,21 +151,20 @@ async function deactivate(userId) {
 document.getElementById('userForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('saveBtn');
-  btn.disabled = true; btn.textContent = '菫晏ｭ倅ｸｭ...';
+  btn.disabled = true; btn.textContent = '保存中...';
   hide('#formError');
 
   const data = formToObj(e.target);
   try {
     if (currentId) await api.admin.updateUser({ id: currentId, ...data });
     else           await api.admin.createUser(data);
-    toast('菫晏ｭ倥＠縺ｾ縺励◆');
+    toast('保存しました');
     showList();
   } catch (err) {
     showError('#formError', err.message);
   }
-  btn.disabled = false; btn.textContent = '菫晏ｭ・;
+  btn.disabled = false; btn.textContent = '保存';
 });
 </script>
 </body>
 </html>
-
