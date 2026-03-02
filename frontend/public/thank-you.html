@@ -12,35 +12,46 @@
 
 <nav class="pub-nav">
   <div class="container d-flex align-items-center justify-content-between">
-    <a href="index.html" class="brand">🌸 はなたば</a>
+    <a href="index.html" class="brand">はなたば</a>
     <a href="order-inquiry.html" class="text-white small">注文照会</a>
   </div>
 </nav>
 
 <main class="container py-5" style="max-width:600px;margin:auto">
+
+  <!-- ヘッダー -->
   <div class="text-center">
-    <div style="font-size:5rem">🌸</div>
+    <div id="headerIcon" style="font-size:5rem">💐</div>
     <h2 class="fw-bold mt-3">ありがとうございます！</h2>
     <p class="lead text-muted">差し入れのご注文を受け付けました。</p>
   </div>
 
+  <!-- 注文番号 -->
   <div class="card p-4 my-4">
     <p class="mb-1 text-muted small">注文番号</p>
     <p class="font-monospace fw-bold fs-5 mb-3" id="orderIdText">—</p>
     <hr>
     <p class="small text-muted mb-0">
       📧 決済完了後、ご登録のメールアドレスへ確認メールをお送りします。<br>
-      メールが届かない場合は、注文照会ページからご確認ください。
+      メールが届かない場合は、下の「注文状況を確認する」からご確認ください。
     </p>
   </div>
 
-  <!-- 注文ステータス（ポーリングで確認） -->
-  <div id="statusArea" class="mb-4"></div>
-
-  <div class="d-flex gap-3 justify-content-center flex-wrap">
-    <a id="inquiryLink" href="order-inquiry.html" class="btn btn-outline-secondary">注文状況を確認する</a>
-    <a href="index.html" class="btn-gift text-decoration-none px-4 py-2">イベント一覧へ戻る</a>
+  <!-- 決済ステータス -->
+  <div id="statusArea" class="mb-4">
+    <!-- JS で差し込む -->
   </div>
+
+  <!-- アクションボタン -->
+  <div class="d-flex gap-3 justify-content-center flex-wrap">
+    <a id="inquiryLink" href="order-inquiry.html" class="btn btn-outline-secondary">
+      注文状況を確認する
+    </a>
+    <a href="index.html" class="btn-gift text-decoration-none px-4 py-2">
+      イベント一覧へ戻る
+    </a>
+  </div>
+
 </main>
 
 <footer class="border-top py-4 mt-5">
@@ -51,47 +62,140 @@
 <script src="../config.js"></script>
 <script src="../shared/js/utils.js"></script>
 <script src="../shared/js/api.js"></script>
+
 <script>
+// ── Base64URL デコード（GMO ?p= パラメータ用）──────────────────────
+// GMO OpenAPI はコールバック URL に ?p=<base64url encoded JSON> を付与する。
+// base64url は +/= → -_（パディングなし）の変換が必要。
+function decodeGmoCallbackParam(str) {
+  try {
+    // base64url → base64 変換
+    const base64 = str
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(str.length + (4 - str.length % 4) % 4, '=');
+    return JSON.parse(atob(base64));
+  } catch (e) {
+    console.warn('?p= のデコードに失敗:', e);
+    return null;
+  }
+}
+
 (async () => {
-  const gmoOrderId = qs.get('gmoOrderId') || qs.get('OrderID');
-  if (!gmoOrderId) { location.href = 'index.html'; return; }
+  // ── URL パラメータ取得 ────────────────────────────────────────
+  const pParam     = qs.get('p');           // GMO コールバック（Base64URL JSON）
+  const gmoOrderId = qs.get('gmoOrderId'); // createOrder 時に callbackUrl に付与した値
 
-  setText('#orderIdText', gmoOrderId);
+  // ── ?p= を解析 ───────────────────────────────────────────────
+  // GMO が付与するコールバックパラメータ（優先して使用）
+  let callbackData = null;
+  if (pParam) {
+    callbackData = decodeGmoCallbackParam(pParam);
+    console.debug('GMO callback p:', callbackData);
+  }
 
-  // 注文照会リンクにメールが必要なため、sessionStorageからメールを取得
+  // gmoOrderId の確定（?p= の orderId 優先）
+  const resolvedGmoOrderId = (callbackData && callbackData.orderId) || gmoOrderId;
+  if (!resolvedGmoOrderId) {
+    // パラメータなしでアクセスされた場合はトップへ
+    location.href = 'index.html';
+    return;
+  }
+
+  // ── 注文番号を表示 ────────────────────────────────────────────
+  setText('#orderIdText', resolvedGmoOrderId);
+
+  // ── ?p= による即時ステータス表示 ─────────────────────────────
+  const callbackStatus = callbackData && (callbackData.status || '');
+  const isPaidCallback = callbackStatus === 'CAPTURE'
+                       || callbackStatus === 'PAYSUCCESS'
+                       || callbackStatus === 'SALES';
+  const isFailCallback = callbackData && callbackData.errCode
+                       || callbackStatus === 'CANCEL'
+                       || callbackStatus === 'INVALID';
+
+  if (isPaidCallback) {
+    showStatusPaid_();
+  } else if (isFailCallback) {
+    showStatusFailed_(callbackData);
+  } else {
+    // Webhook 待ち（非同期通知がまだ来ていない可能性）
+    showStatusPending_();
+  }
+
+  // ── sessionStorage から buyerEmail を取得 ─────────────────────
   const savedEmail = store.get('last_buyer_email');
+  store.del('last_buyer_email'); // 一度だけ使用
+
+  // 注文照会リンクに gmoOrderId とメールをセット
   if (savedEmail) {
-    $('#inquiryLink').href = `order-inquiry.html?gmoOrderId=${encodeURIComponent(gmoOrderId)}&email=${encodeURIComponent(savedEmail)}`;
+    $('#inquiryLink').href =
+      `order-inquiry.html?gmoOrderId=${encodeURIComponent(resolvedGmoOrderId)}&email=${encodeURIComponent(savedEmail)}`;
+  } else {
+    $('#inquiryLink').href = `order-inquiry.html`;
   }
 
-  // 注文ステータスを確認（10秒後に1回）
-  const cfg = getConfig();
-  const api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
+  // ── inquireOrder API でステータスを確認（Webhook が先着する場合） ──
+  // ?p= が「CAPTURE」でない場合や、Webhook 処理の完了を確認するためポーリングする。
+  if (savedEmail && !isPaidCallback) {
+    const cfg = getConfig();
+    const api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
 
-  if (savedEmail) {
-    setTimeout(async () => {
-      try {
-        const order = await api.public.inquireOrder(gmoOrderId, savedEmail);
-        if (order.paymentStatus === 'PAID') {
-          setHtml('#statusArea', `
-            <div class="alert alert-success">
-              ✅ <strong>決済が確認されました。</strong>
-              差し入れの準備をしています。
-            </div>`);
-        } else if (order.paymentStatus === 'CANCELED') {
-          setHtml('#statusArea', `
-            <div class="alert alert-warning">
-              ⚠️ 決済がキャンセルされました。もう一度お試しください。
-            </div>`);
-        }
-      } catch (_) {
-        // 照会失敗は無視
+    // 5秒後に1回目の確認
+    await pollPaymentStatus_(api, resolvedGmoOrderId, savedEmail, 5000);
+  }
+
+  // ── 内部: ステータス UI 更新 ───────────────────────────────────
+
+  function showStatusPaid_() {
+    setHtml('#statusArea', `
+      <div class="alert alert-success d-flex align-items-start gap-2">
+        <span style="font-size:1.4rem">✅</span>
+        <div>
+          <strong>決済が確認されました。</strong><br>
+          <span class="small">差し入れの準備を開始します。配送状況はメールまたは注文照会ページでご確認ください。</span>
+        </div>
+      </div>`);
+  }
+
+  function showStatusFailed_(data) {
+    const errMsg = data && data.errCode ? `（エラーコード: ${data.errCode}）` : '';
+    setHtml('#statusArea', `
+      <div class="alert alert-warning d-flex align-items-start gap-2">
+        <span style="font-size:1.4rem">⚠️</span>
+        <div>
+          <strong>決済がキャンセルまたは失敗しました。</strong>${errMsg}<br>
+          <span class="small">もう一度お試しいただくか、別の支払い方法をご利用ください。</span>
+        </div>
+      </div>`);
+  }
+
+  function showStatusPending_() {
+    setHtml('#statusArea', `
+      <div class="alert alert-info d-flex align-items-start gap-2">
+        <span style="font-size:1.4rem">⏳</span>
+        <div>
+          <strong>決済状況を確認しています…</strong><br>
+          <span class="small">しばらくお待ちください。</span>
+        </div>
+      </div>`);
+  }
+
+  async function pollPaymentStatus_(api, gmoOrderId, email, delayMs) {
+    await new Promise(r => setTimeout(r, delayMs));
+    try {
+      const order = await api.public.inquireOrder(gmoOrderId, email);
+      if (order.paymentStatus === 'PAID') {
+        showStatusPaid_();
+      } else if (order.paymentStatus === 'CANCELED') {
+        showStatusFailed_(null);
       }
-    }, 10000);
+      // PENDING の場合はそのまま（Webhook 遅延を考慮し追加ポーリングはしない）
+    } catch (_) {
+      // 照会失敗は無視（ネットワーク・GAS 遅延の可能性）
+    }
   }
 
-  // セッションからメールを削除（1回だけ使用）
-  store.del('last_buyer_email');
 })();
 </script>
 </body>
