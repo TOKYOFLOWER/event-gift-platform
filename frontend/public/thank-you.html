@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ご注文ありがとうございました — はなたば</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../shared/css/style.css">
+</head>
+<body>
+
+<nav class="pub-nav">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a href="index.html" class="brand">🌸 はなたば</a>
+    <a href="order-inquiry.html" class="text-white small">注文照会</a>
+  </div>
+</nav>
+
+<main class="container py-5" style="max-width:600px;margin:auto">
+  <div class="text-center">
+    <div style="font-size:5rem">🌸</div>
+    <h2 class="fw-bold mt-3">ありがとうございます！</h2>
+    <p class="lead text-muted">差し入れのご注文を受け付けました。</p>
+  </div>
+
+  <div class="card p-4 my-4">
+    <p class="mb-1 text-muted small">注文番号</p>
+    <p class="font-monospace fw-bold fs-5 mb-3" id="orderIdText">—</p>
+    <hr>
+    <p class="small text-muted mb-0">
+      📧 決済完了後、ご登録のメールアドレスへ確認メールをお送りします。<br>
+      メールが届かない場合は、注文照会ページからご確認ください。
+    </p>
+  </div>
+
+  <!-- 注文ステータス（ポーリングで確認） -->
+  <div id="statusArea" class="mb-4"></div>
+
+  <div class="d-flex gap-3 justify-content-center flex-wrap">
+    <a id="inquiryLink" href="order-inquiry.html" class="btn btn-outline-secondary">注文状況を確認する</a>
+    <a href="index.html" class="btn-gift text-decoration-none px-4 py-2">イベント一覧へ戻る</a>
+  </div>
+</main>
+
+<footer class="border-top py-4 mt-5">
+  <div class="container text-center text-muted small">&copy; 2026 はなたば.</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../config.js"></script>
+<script src="../shared/js/utils.js"></script>
+<script src="../shared/js/api.js"></script>
+<script>
+(async () => {
+  const gmoOrderId = qs.get('gmoOrderId') || qs.get('OrderID');
+  if (!gmoOrderId) { location.href = 'index.html'; return; }
+
+  setText('#orderIdText', gmoOrderId);
+
+  // 注文照会リンクにメールが必要なため、sessionStorageからメールを取得
+  const savedEmail = store.get('last_buyer_email');
+  if (savedEmail) {
+    $('#inquiryLink').href = `order-inquiry.html?gmoOrderId=${encodeURIComponent(gmoOrderId)}&email=${encodeURIComponent(savedEmail)}`;
+  }
+
+  // 注文ステータスを確認（10秒後に1回）
+  const cfg = getConfig();
+  const api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
+
+  if (savedEmail) {
+    setTimeout(async () => {
+      try {
+        const order = await api.public.inquireOrder(gmoOrderId, savedEmail);
+        if (order.paymentStatus === 'PAID') {
+          setHtml('#statusArea', `
+            <div class="alert alert-success">
+              ✅ <strong>決済が確認されました。</strong>
+              差し入れの準備をしています。
+            </div>`);
+        } else if (order.paymentStatus === 'CANCELED') {
+          setHtml('#statusArea', `
+            <div class="alert alert-warning">
+              ⚠️ 決済がキャンセルされました。もう一度お試しください。
+            </div>`);
+        }
+      } catch (_) {
+        // 照会失敗は無視
+      }
+    }, 10000);
+  }
+
+  // セッションからメールを削除（1回だけ使用）
+  store.del('last_buyer_email');
+})();
+</script>
+</body>
+</html>

@@ -1,44 +1,106 @@
-﻿/**
+/**
  * src/public/Code.js
- * Public WebApp エントリポイント
+ * Public REST API エントリポイント（認証不要）
  * 変更履歴:
  *   2026-03-01 Phase1 スタブ
- *   2026-03-02 Phase3 完全実装（全ページ + GMO-PG結果通知）
+ *   2026-03-02 Phase3 HTML実装
+ *   2026-03-02 Phase4 REST API化
+ *   2026-03-02 Phase4b CORS回避: JSONP対応 + _m=post
+ *
+ * CORS 回避策:
+ *   GET  → JSONP（?callback=cbName）
+ *   POST → ?_m=post を付けた JSONP GET として doGet で処理
+ *   GMO-PG 結果通知のみ doPost で TEXT 応答を維持
  */
 
+// ─────────────────────────────────────────────
+// エントリポイント
+// ─────────────────────────────────────────────
+
 function doGet(e) {
+  var params = (e && e.parameter) || {};
+  var action = params.action || '';
+
   try {
-    var params = (e && e.parameter) || {};
-    var page   = params.page || 'eventList';
-    return routeGet(page, params);
+    var data;
+    if (params._m === 'post') {
+      // JSONP 経由の POST 操作
+      data = routePost(action, params);
+    } else {
+      data = routeGet(action, params);
+    }
+    return jsonOk(data, params.callback);
   } catch (err) {
-    Logger.log('doGet error: ' + err.message + '\n' + (err.stack || ''));
-    return buildPublicPage('エラー',
-      '<div class="container py-5 text-center">'
-      + '<h3>申し訳ありません</h3>'
-      + '<p class="text-muted">予期しないエラーが発生しました。しばらくしてから再度お試しください。</p>'
-      + '<a href="' + ScriptApp.getService().getUrl() + '">← TOP へ戻る</a>'
-      + '</div>');
+    return jsonError(err, params.callback);
   }
 }
 
 function doPost(e) {
-  try {
-    var params = (e && e.parameter) || {};
-    return routePost(params);
-  } catch (err) {
-    // GMO-PG通知の場合はNGを返す、フォームの場合はエラーページ
-    Logger.log('doPost error: ' + err.message);
-    // params にカード情報が含まれる可能性があるので絶対にログしない
-    if (!((e && e.parameter && e.parameter.action))) {
-      // 結果通知への失敗応答
+  var params = (e && e.parameter) || {};
+  var action = params.action || '';
+
+  // ── GMO-PG 結果通知（action なし & OrderID あり）──────────
+  // テキスト応答を維持（GMO仕様）
+  if (!action && params.OrderID) {
+    try {
+      var result = handleGmoNotification(params);
+      return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.TEXT);
+    } catch (err) {
+      Logger.log('GMO notify error: ' + err.message);
       return ContentService.createTextOutput('NG').setMimeType(ContentService.MimeType.TEXT);
     }
-    return buildPublicPage('エラー',
-      '<div class="container py-5 text-center">'
-      + '<h3>エラーが発生しました</h3>'
-      + '<p class="text-muted">' + escHtml(err.message) + '</p>'
-      + '<a href="' + ScriptApp.getService().getUrl() + '">← TOP へ戻る</a>'
-      + '</div>');
   }
+
+  // 通常 POST（後方互換用 — 現在は doGet 経由 JSONP が主）
+  try {
+    var body = {};
+    if (e && e.postData && e.postData.type === 'application/json') {
+      try { body = JSON.parse(e.postData.contents); } catch (_) {}
+    }
+    var merged = Object.assign({}, body, params);
+    var data = routePost(action, merged);
+    return jsonOk(data, params.callback);
+  } catch (err) {
+    return jsonError(err, params.callback);
+  }
+}
+
+// ─────────────────────────────────────────────
+// JSON / JSONP レスポンスヘルパー
+// ─────────────────────────────────────────────
+
+function jsonOk(data, callback) {
+  var payload = JSON.stringify({ ok: true, data: data });
+  if (callback) {
+    payload = sanitizeCallback(callback) + '(' + payload + ')';
+    return ContentService.createTextOutput(payload)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(payload)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function jsonError(err, callback) {
+  var status = 500;
+  var code   = 'INTERNAL_ERROR';
+  var msg    = err.message || 'Internal error';
+
+  if (msg === 'NOT_FOUND')   { status = 404; code = 'NOT_FOUND'; }
+  if (msg === 'BAD_REQUEST') { status = 400; code = 'BAD_REQUEST'; }
+  if (msg === 'CLOSED')      { status = 410; code = 'CLOSED'; }
+
+  Logger.log('[Public API Error] code=' + code + ' msg=' + msg);
+
+  var payload = JSON.stringify({ ok: false, error: { code: code, message: msg }, status: status });
+  if (callback) {
+    payload = sanitizeCallback(callback) + '(' + payload + ')';
+    return ContentService.createTextOutput(payload)
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(payload)
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function sanitizeCallback(cb) {
+  return String(cb).replace(/[^a-zA-Z0-9_.]/g, '');
 }

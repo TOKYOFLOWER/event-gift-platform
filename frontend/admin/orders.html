@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>注文管理 — はなたば Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../shared/css/style.css">
+</head>
+<body>
+<div id="pageContent">
+  <!-- フィルター -->
+  <div class="card p-3 mb-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label small">イベント</label>
+        <select id="filterEvent" class="form-select form-select-sm">
+          <option value="">すべて</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">決済状況</label>
+        <select id="filterPayment" class="form-select form-select-sm">
+          <option value="">すべて</option>
+          <option value="PENDING">保留中</option>
+          <option value="PAID">確定</option>
+          <option value="CANCELED">キャンセル</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small">お届け状況</label>
+        <select id="filterFulfill" class="form-select form-select-sm">
+          <option value="">すべて</option>
+          <option value="PENDING_DELIVERY">未発送</option>
+          <option value="DELIVERED">発送済み</option>
+          <option value="COMPLETED">完了</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-primary btn-sm w-100" onclick="loadOrders()">絞り込む</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="listArea"><div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span></div></div>
+
+  <!-- 詳細モーダル -->
+  <div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTitle">注文詳細</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div></div>
+  </div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../config.js"></script>
+<script src="../shared/js/utils.js"></script>
+<script src="../shared/js/auth.js"></script>
+<script src="../shared/js/api.js"></script>
+<script src="../shared/js/admin-layout.js"></script>
+<script>
+initAdminLayout({ pageTitle: '注文管理', activeNav: 'orders' });
+
+let api;
+
+Auth.init({
+  onLogin: async (userInfo, token) => {
+    setTopbarUser(userInfo);
+    const cfg = getConfig();
+    api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
+    api.admin.setToken(token);
+
+    // URL パラメータでフィルタ設定
+    const evId     = qs.get('eventId');
+    const pStatus  = qs.get('paymentStatus');
+    if (evId)    document.getElementById('filterEvent').dataset.presetId = evId;
+    if (pStatus) document.getElementById('filterPayment').value = pStatus;
+
+    // イベント選択肢を非同期で埋める
+    try {
+      const events = await api.admin.listEvents();
+      const sel = document.getElementById('filterEvent');
+      events.forEach(ev => {
+        const opt = document.createElement('option');
+        opt.value = ev.eventId; opt.textContent = ev.title;
+        if (ev.eventId === evId) opt.selected = true;
+        sel.appendChild(opt);
+      });
+    } catch (_) {}
+
+    loadOrders();
+  },
+  onLogout: () => { location.href = 'index.html'; }
+});
+if (!Auth.isLoggedIn()) location.href = 'index.html';
+
+async function loadOrders() {
+  showLoading('#listArea');
+  const params = {};
+  const evId     = document.getElementById('filterEvent').value;
+  const pStatus  = document.getElementById('filterPayment').value;
+  const fStatus  = document.getElementById('filterFulfill').value;
+  if (evId)    params.eventId           = evId;
+  if (pStatus) params.paymentStatus     = pStatus;
+  if (fStatus) params.fulfillmentStatus = fStatus;
+
+  try {
+    const orders = await api.admin.listOrders(params);
+    setHtml('#listArea', `
+      <p class="text-muted small mb-2">${orders.length} 件</p>
+      ${renderTable({
+        cols: [
+          { label: '注文番号', key: 'gmoOrderId', render: r =>
+            `<a href="#" onclick="showDetail('${esc(r.orderId)}');return false" class="font-monospace small">${esc(r.gmoOrderId)}</a>` },
+          { label: '決済', key: 'paymentStatus', render: r => statusBadge(r.paymentStatus) },
+          { label: 'お届け', key: 'fulfillmentStatus', render: r => statusBadge(r.fulfillmentStatus) },
+          { label: '金額', key: 'totalJPY', render: r => fmtJPY(r.totalJPY) },
+          { label: '注文日', key: 'createdAt', render: r => fmtDate(r.createdAt) },
+          { label: '', key: '_act', render: r =>
+            `<button class="btn btn-sm btn-outline-primary" onclick="showDetail('${esc(r.orderId)}')">詳細</button>` }
+        ],
+        rows: orders,
+        emptyMsg: '注文がありません'
+      })}`);
+  } catch (e) { showError('#listArea', e.message); }
+}
+
+async function showDetail(orderId) {
+  const modal = new bootstrap.Modal(document.getElementById('orderModal'));
+  setHtml('#modalBody', '<div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span>読み込み中...</div>');
+  modal.show();
+
+  try {
+    const { order: o, product, performer, event: ev } = await api.admin.getOrder(orderId);
+    setText('#modalTitle', o.gmoOrderId);
+
+    const FULFILL_STATUSES = ['PENDING_DELIVERY', 'DELIVERED', 'COMPLETED'];
+
+    setHtml('#modalBody', `
+      <div class="row">
+        <div class="col-md-6">
+          <table class="table table-sm">
+            <tbody>
+              ${[
+                ['注文番号', `<span class="font-monospace">${esc(o.gmoOrderId)}</span>`],
+                ['決済状態', statusBadge(o.paymentStatus)],
+                ['お届け状態', statusBadge(o.fulfillmentStatus)],
+                ['商品', esc(product ? product.name : o.productId)],
+                ['数量', esc(String(o.qty))],
+                ['合計', fmtJPY(o.totalJPY)],
+                ['イベント', esc(ev ? ev.title : o.eventId)],
+                ['宛先', esc(performer ? performer.displayName : o.performerId)],
+                ['注文日時', fmtDateTime(o.createdAt)],
+                ['決済完了', o.paidAt ? fmtDateTime(o.paidAt) : '—'],
+              ].map(([k,v]) => `<tr><th class="text-muted fw-normal" style="width:40%">${esc(k)}</th><td>${v}</td></tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <h6>贈り主</h6>
+          <p class="mb-1">${esc(o.isAnonymous ? '匿名' : (o.buyerName || '—'))}</p>
+          <p class="mb-3 small text-muted">${esc(o.buyerEmail)}</p>
+          <h6>メッセージ</h6>
+          <p class="mb-1">${esc(o.messageToPerformer || '（なし）')}</p>
+          <p class="small text-muted">公開: ${o.isMessagePublic ? 'はい' : 'いいえ'} / 匿名: ${o.isAnonymous ? 'はい' : 'いいえ'}</p>
+        </div>
+      </div>
+      <hr>
+      <h6>お届け状態を更新</h6>
+      <div class="d-flex gap-2 align-items-center">
+        <select id="fulfillSelect" class="form-select" style="max-width:240px">
+          ${FULFILL_STATUSES.map(s => `<option value="${esc(s)}" ${o.fulfillmentStatus === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary btn-sm" onclick="updateFulfill('${esc(o.orderId)}')">更新</button>
+      </div>`);
+  } catch (e) {
+    setHtml('#modalBody', `<div class="error-banner">${esc(e.message)}</div>`);
+  }
+}
+
+async function updateFulfill(orderId) {
+  const status = document.getElementById('fulfillSelect').value;
+  try {
+    await api.admin.updateFulfillment(orderId, status);
+    toast('更新しました');
+    bootstrap.Modal.getInstance(document.getElementById('orderModal'))?.hide();
+    loadOrders();
+  } catch (e) { toast(e.message, 'danger'); }
+}
+</script>
+</body>
+</html>

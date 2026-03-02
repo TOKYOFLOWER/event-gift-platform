@@ -1,12 +1,26 @@
 ﻿# Event Gift Platform
 
 イベント向けギフト（花の差し入れ）プラットフォーム。  
-**GAS + Google Sheets + GMO-PG リンクタイプPlus** で構成される MVP。
+**GAS REST API + Vanilla JS フロントエンド + Google Sheets + GMO-PG リンクタイプPlus** で構成される MVP。
+
+## アーキテクチャ（Phase4〜）
+
+```
+┌─────────────────────────────┐    REST API (JSON)
+│  frontend/                  │ ───────────────────▶  GAS Public WebApp
+│  Vanilla JS + Bootstrap 5   │                        ↕ Sheets
+│  GitHub Pages / Vercel      │ ───────────────────▶  GAS Admin WebApp
+└─────────────────────────────┘    (Google Auth)
+```
+
+- **GAS**: JSON API 専用。HTML は返さない。
+- **フロントエンド**: `frontend/` ディレクトリで Git 管理。静的ファイルのみ。
+- **データストア**: Google Sheets
 
 ## 概要
 
-- 公開 WebApp: イベント一覧・詳細・差し入れ購入フロー
-- 管理 WebApp: イベント/出演者/注文の管理（Google ログイン必須）
+- Public API: イベント一覧・詳細・差し入れ購入フロー（認証不要）
+- Admin API: イベント/出演者/注文の管理（Google ログイン必須）
 - データストア: Google Sheets
 - 決済: GMO-PG リンクタイプPlus（非同期結果通知）
 

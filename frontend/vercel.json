@@ -1,0 +1,20 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/events/:path*", "destination": "/public/event-detail.html" },
+    { "source": "/gift/:path*", "destination": "/public/gift-products.html" },
+    { "source": "/thank-you", "destination": "/public/thank-you.html" },
+    { "source": "/orders", "destination": "/public/order-inquiry.html" },
+    { "source": "/admin", "destination": "/admin/index.html" },
+    { "source": "/admin/:path*", "destination": "/admin/:path*.html" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+      ]
+    }
+  ]
+}

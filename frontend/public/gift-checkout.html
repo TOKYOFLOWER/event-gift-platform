@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>差し入れ情報を入力 — はなたば</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../shared/css/style.css">
+</head>
+<body>
+
+<nav class="pub-nav">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a href="index.html" class="brand">🌸 はなたば</a>
+    <a href="order-inquiry.html" class="text-white small">注文照会</a>
+  </div>
+</nav>
+
+<main class="container py-4" style="max-width:640px">
+
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="index.html">TOP</a></li>
+      <li class="breadcrumb-item" id="breadEventLink"><a href="#">イベント</a></li>
+      <li class="breadcrumb-item"><a id="breadBackLink" href="#">商品選択</a></li>
+      <li class="breadcrumb-item active">情報入力</li>
+    </ol>
+  </nav>
+
+  <!-- ローディング/エラー -->
+  <div id="statusArea"></div>
+
+  <!-- 選択サマリー -->
+  <div id="summaryCard" class="card p-3 mb-4 bg-light d-none">
+    <div class="row align-items-center g-2">
+      <div class="col-auto">
+        <span id="summaryImg" style="font-size:2.5rem">🌸</span>
+      </div>
+      <div class="col">
+        <p class="fw-bold mb-0" id="summaryProduct"></p>
+        <p class="text-danger fw-bold mb-0" id="summaryPrice"></p>
+        <p class="text-muted small mb-0" id="summaryTarget"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- フォーム -->
+  <form id="checkoutForm" class="d-none" novalidate>
+    <div class="form-section">
+      <p class="form-section-title">贈り主情報</p>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">お名前（公開名義）</label>
+        <input type="text" class="form-control" name="buyerName" placeholder="山田 花子" maxlength="50">
+        <div class="form-text text-muted">省略可。匿名にする場合は下のチェックを使ってください。</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">メールアドレス <span class="text-danger">*</span></label>
+        <input type="email" class="form-control" name="buyerEmail" placeholder="example@email.com" required>
+        <div class="form-text text-muted">注文確認メールをお送りします。</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">電話番号（任意）</label>
+        <input type="tel" class="form-control" name="buyerPhone" placeholder="090-xxxx-xxxx">
+      </div>
+    </div>
+
+    <div class="form-section">
+      <p class="form-section-title" id="messageTitle">メッセージ</p>
+      <div class="mb-3">
+        <label class="form-label fw-semibold" id="messageLabel">応援メッセージ（任意）</label>
+        <textarea class="form-control" name="messageToPerformer" rows="4" maxlength="400"
+          placeholder="お疲れさまでした！いつも素敵な演奏をありがとうございます。"></textarea>
+        <div class="form-text text-muted text-end"><span id="msgCount">0</span> / 400</div>
+      </div>
+      <div class="mb-2 form-check">
+        <input type="checkbox" class="form-check-input" name="isMessagePublic" id="chkPublic">
+        <label class="form-check-label" for="chkPublic">このメッセージをイベントページで公開する</label>
+      </div>
+      <div class="mb-3 form-check">
+        <input type="checkbox" class="form-check-input" name="isAnonymous" id="chkAnon">
+        <label class="form-check-label" for="chkAnon">匿名で差し入れる（名前を非表示）</label>
+      </div>
+    </div>
+
+    <div class="alert alert-light border mb-4">
+      <p class="small text-muted mb-1">⚠️ ご注意</p>
+      <ul class="small text-muted mb-0">
+        <li>「支払いへ進む」をクリックすると決済画面へ移動します</li>
+        <li>決済完了後、確認メールをお送りします</li>
+        <li>差し入れは会場でまとめて出演者にお渡しします</li>
+      </ul>
+    </div>
+
+    <div id="formError" class="error-banner d-none mb-3"></div>
+
+    <div class="d-grid">
+      <button type="submit" id="submitBtn" class="btn-gift btn-lg py-3">💳 支払いへ進む</button>
+    </div>
+  </form>
+
+</main>
+
+<footer class="border-top py-4 mt-5">
+  <div class="container text-center text-muted small">&copy; 2026 はなたば.</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../config.js"></script>
+<script src="../shared/js/utils.js"></script>
+<script src="../shared/js/api.js"></script>
+<script>
+(async () => {
+  const eventId     = qs.get('eventId');
+  const performerId = qs.get('performerId');
+  const productId   = qs.get('productId');
+
+  if (!eventId || !performerId || !productId) { location.href = 'index.html'; return; }
+
+  // パンくず更新
+  $('#breadEventLink a').href = `event-detail.html?id=${eventId}`;
+  $('#breadBackLink').href    = `gift-products.html?eventId=${eventId}&performerId=${performerId}`;
+
+  const cfg = getConfig();
+  const api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
+
+  showLoading('#statusArea');
+
+  let evResult;
+  try {
+    evResult = await api.public.getEvent(eventId);
+  } catch (e) {
+    showError('#statusArea', e.message);
+    return;
+  }
+
+  setHtml('#statusArea', '');
+
+  const { event: ev, performers } = evResult;
+  const performer = performers.find(p => p.performerId === performerId);
+
+  // 商品検索
+  let product;
+  try {
+    const products = await api.public.listProducts({ eventId });
+    product = products.find(p => p.productId === productId);
+  } catch (_) {}
+
+  if (!performer || !product) {
+    showError('#statusArea', '情報の取得に失敗しました。最初からやり直してください。');
+    return;
+  }
+
+  // サマリー表示
+  if (product.imageUrl) {
+    setHtml('#summaryImg', `<img src="${esc(product.imageUrl)}" style="width:56px;height:56px;object-fit:cover;border-radius:8px">`);
+  }
+  setText('#summaryProduct', product.name);
+  setText('#summaryPrice', fmtJPY(product.priceJPY));
+  setText('#summaryTarget', `宛先: ${performer.displayName} / ${ev.title}`);
+  show('#summaryCard');
+
+  // ラベル更新
+  setText('#messageTitle',  `メッセージ（${performer.displayName}さんへ）`);
+  setText('#messageLabel', `応援メッセージ（任意 — ${performer.displayName}さんへ）`);
+
+  show('#checkoutForm');
+
+  // 文字数カウント
+  $('[name=messageToPerformer]').addEventListener('input', function() {
+    setText('#msgCount', this.value.length);
+  });
+
+  // フォーム送信
+  document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = '処理中...';
+    hide('#formError');
+
+    const data = formToObj(e.target);
+
+    try {
+      const result = await api.public.createOrder({
+        eventId,
+        performerId,
+        productId,
+        ...data,
+        returnBaseUrl: getConfig().frontendBaseUrl
+      });
+
+      // GMO-PG 決済画面へリダイレクト
+      location.href = result.redirectUrl;
+    } catch (err) {
+      setHtml('#formError', esc(err.message));
+      show('#formError');
+      btn.disabled = false;
+      btn.textContent = '💳 支払いへ進む';
+    }
+  });
+})();
+</script>
+</body>
+</html>

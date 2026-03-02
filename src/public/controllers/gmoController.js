@@ -1,9 +1,12 @@
-﻿/**
+/**
  * src/public/controllers/gmoController.js
- * GMO-PG リンクタイプPlus 連携
- * - 決済URL取得（GetLinkplusUrlPayment.json）
- * - 結果通知受信（doPost / 冪等性チェック）
- * 変更履歴: 2026-03-02 Phase3 実装
+ * GMO-PG リンクタイプPlus 連携 API
+ * 変更履歴:
+ *   2026-03-02 Phase3 HTML実装
+ *   2026-03-02 Phase4 JSON API化
+ *     - createOrderAndRedirect → apiCreatePublicOrder（JSONでリダイレクトURLを返す）
+ *     - handleGmoNotification はそのまま維持（GMO仕様でテキスト応答）
+ *
  * セキュリティ注意: このファイルはカード情報を絶対にログ出力しない
  */
 
@@ -11,77 +14,81 @@ var GMO_TEST_ENDPOINT  = 'https://pt01.mul-pay.jp/payment/GetLinkplusUrlPayment.
 var GMO_PROD_ENDPOINT  = 'https://p01.mul-pay.jp/payment/GetLinkplusUrlPayment.json';
 
 /**
- * 注文を作成して GMO-PG の決済URL を取得し、リダイレクト用 HtmlOutput を返す。
- * @param {Object} params - フォームパラメータ（buyerName, buyerEmail, productId, etc.）
- * @param {string} eventId
- * @param {string} performerId
- * @returns {GoogleAppsScript.HTML.HtmlOutput}
+ * POST ?action=createOrder
+ * 注文を作成して GMO-PG の決済URL を取得し JSON で返す。
+ * フロントエンド側で window.location.href = data.redirectUrl でリダイレクトする。
+ *
+ * @param {Object} params - { eventId, performerId, productId, buyerName, buyerEmail,
+ *                            buyerPhone, messageToPerformer, isMessagePublic, isAnonymous }
+ * @returns {{ orderId, gmoOrderId, redirectUrl }}
  */
-function createOrderAndRedirect(params, eventId, performerId) {
+function apiCreatePublicOrder(params) {
   // 1. バリデーション
-  var product = findProductById(params.productId);
-  if (!product || !product.isActive) throw new Error('商品が見つかりません');
+  if (!params.eventId)     throw badRequest('eventId は必須です');
+  if (!params.performerId) throw badRequest('performerId は必須です');
+  if (!params.productId)   throw badRequest('productId は必須です');
+  if (!params.buyerEmail)  throw badRequest('buyerEmail は必須です');
 
-  var ev = findEventById(eventId);
-  if (!ev || ev.status !== EVENT_STATUS.PUBLISHED) throw new Error('イベントが見つかりません');
+  var product = findProductById(params.productId);
+  if (!product || !product.isActive) throw notFound('商品が見つかりません');
+
+  var ev = findEventById(params.eventId);
+  if (!ev || ev.status !== EVENT_STATUS.PUBLISHED) throw notFound('イベントが見つかりません');
 
   var now = new Date();
-  if (ev.giftDeadlineAt && new Date(ev.giftDeadlineAt) <= now) throw new Error('差し入れの受付期間が終了しています');
+  if (ev.giftDeadlineAt && new Date(ev.giftDeadlineAt) <= now) {
+    throw closedError('差し入れの受付期間が終了しています');
+  }
 
   validateEmail(params.buyerEmail);
 
-  // 2. 受取先を解決（パフォーマー固有 or イベントデフォルト）
-  var receiver = getDefaultReceiverForEvent(eventId);
+  // 2. 受取先を解決
+  var receiver = getDefaultReceiverForEvent(params.eventId);
   if (!receiver) throw new Error('受取設定が完了していません。管理者にお問い合わせください。');
 
-  // 3. 主催者 ID を解決
-  var organizerId = ev.organizerId;
-
-  // 4. Orders に PENDING で作成
+  // 3. Orders に PENDING で作成
   var order = createOrder({
-    eventId:             eventId,
-    organizerId:         organizerId,
-    performerId:         performerId,
+    eventId:             params.eventId,
+    organizerId:         ev.organizerId,
+    performerId:         params.performerId,
     receiverId:          receiver.receiverId,
     productId:           product.productId,
     qty:                 1,
     unitPriceJPY:        product.priceJPY,
-    buyerName:           params.buyerName           || '',
+    buyerName:           params.buyerName            || '',
     buyerEmail:          params.buyerEmail,
-    buyerPhone:          params.buyerPhone           || '',
-    messageToPerformer:  params.messageToPerformer   || '',
-    isMessagePublic:     params.isMessagePublic === 'on',
-    isAnonymous:         params.isAnonymous     === 'on'
+    buyerPhone:          params.buyerPhone            || '',
+    messageToPerformer:  params.messageToPerformer    || '',
+    isMessagePublic:     params.isMessagePublic === true || params.isMessagePublic === 'true' || params.isMessagePublic === 'on',
+    isAnonymous:         params.isAnonymous     === true || params.isAnonymous     === 'true' || params.isAnonymous     === 'on'
   });
 
-  // 5. GMO-PG 決済URL取得
+  // 4. GMO-PG 決済URL取得
   var linkUrl;
   try {
-    linkUrl = getGmoLinkPlusUrl(order);
+    linkUrl = getGmoLinkPlusUrl(order, params.returnBaseUrl);
   } catch (err) {
     // URL取得失敗時は注文をキャンセル
     updateOrderPayment(order.orderId, { paymentStatus: PAYMENT_STATUS.CANCELED });
     throw new Error('決済サービスへの接続に失敗しました。しばらくしてから再度お試しください。');
   }
 
-  // 6. GMO-PG 決済画面へリダイレクト
-  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    + '<title>決済画面へ移動中...</title></head><body>'
-    + '<p style="text-align:center;padding:3rem;font-family:sans-serif">決済画面へ移動しています...</p>'
-    + '<script>window.location.href=' + JSON.stringify(linkUrl) + ';</script>'
-    + '</body></html>';
-
-  return HtmlService.createHtmlOutput(html)
-    .setTitle('決済画面へ移動中')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  // 5. JSON レスポンス（フロントエンドがリダイレクトを処理する）
+  return {
+    orderId:     order.orderId,
+    gmoOrderId:  order.gmoOrderId,
+    redirectUrl: linkUrl
+  };
 }
 
 /**
  * GMO-PG GetLinkplusUrlPayment.json を呼んで決済URL を返す。
- * @param {Object} order - createOrder() の戻り値
+ * @param {Object} order           - createOrder() の戻り値
+ * @param {string} [returnBaseUrl] - フロントエンドのベースURL（サンクスページ用）
+ *                                   指定がない場合は GAS WebApp URL を使用（後方互換）
  * @returns {string} LinkUrl
  */
-function getGmoLinkPlusUrl(order) {
+function getGmoLinkPlusUrl(order, returnBaseUrl) {
   var shopId   = getScriptProperty(PROP.GMO_SHOP_ID);
   var shopPass = getScriptProperty(PROP.GMO_SHOP_PASS);
   var configId = getScriptProperty(PROP.GMO_CONFIG_ID);
@@ -90,11 +97,17 @@ function getGmoLinkPlusUrl(order) {
 
   if (!shopId || !shopPass) throw new Error('GMO_SHOP_ID / GMO_SHOP_PASS が未設定です');
 
-  // 決済完了後の戻り先URL
-  var baseUrl   = ScriptApp.getService().getUrl();
-  var returnUrl = baseUrl + '?page=thankYou&gmoOrderId=' + encodeURIComponent(order.gmoOrderId);
-  // 結果通知URL（doPost が受け取る）
-  var notifyUrl = baseUrl;
+  // 決済完了後のリダイレクト先（フロントエンドのサンクスページ）
+  var base = returnBaseUrl
+    ? (returnBaseUrl.replace(/\/$/, ''))
+    : ScriptApp.getService().getUrl();
+
+  // フロントエンド側のサンクスページ URL（?gmoOrderId=xxx で受け取る想定）
+  var returnUrl = base + '/thank-you?gmoOrderId=' + encodeURIComponent(order.gmoOrderId);
+  var cancelUrl = base + '/events/' + encodeURIComponent(order.eventId);
+
+  // 結果通知URL（GAS Public WebApp の doPost）
+  var notifyUrl = ScriptApp.getService().getUrl();
 
   var payload = {
     geturlparam: {
@@ -102,18 +115,18 @@ function getGmoLinkPlusUrl(order) {
       ShopPass: shopPass
     },
     transaction: {
-      OrderID:  order.gmoOrderId,
-      Amount:   String(order.totalJPY),
-      Tax:      '0'
+      OrderID: order.gmoOrderId,
+      Amount:  String(order.totalJPY),
+      Tax:     '0'
     },
     credit: {
       JobCd:  'CAPTURE',
       Method: '1'
     },
     resultskipflag: '0',
-    returnurl:   returnUrl,
-    cancelurl:   baseUrl + '?page=eventDetail&gmoOrderId=' + encodeURIComponent(order.gmoOrderId),
-    notifyurl:   notifyUrl
+    returnurl:  returnUrl,
+    cancelurl:  cancelUrl,
+    notifyurl:  notifyUrl
   };
 
   if (configId) payload.configid = configId;
@@ -136,7 +149,6 @@ function getGmoLinkPlusUrl(order) {
 
   var result = JSON.parse(body);
 
-  // エラーチェック（ErrCode が返る場合）
   if (result.ErrCode) {
     Logger.log('GMO ErrCode: ' + result.ErrCode + ' / ' + result.ErrInfo);
     throw new Error('GMO-PG エラー: ' + result.ErrCode);
@@ -152,6 +164,7 @@ function getGmoLinkPlusUrl(order) {
 /**
  * GMO-PG 結果通知（ResultReceive）を処理する。
  * doPost(e) から呼ばれる。冪等性チェック付き。
+ * ※ このメソッドはテキスト（'0' or 'NG'）を返す（GMO仕様）
  * @param {Object} params - e.parameter
  * @returns {string} '0'（正常）or 'NG'（異常）
  */
@@ -225,11 +238,4 @@ function handleGmoNotification(params) {
     Logger.log('handleGmoNotification error: ' + err.message);
     return 'NG';
   }
-}
-
-/**
- * 注文照会（P7 フォームの POST 処理）
- */
-function handleOrderInquiry(params) {
-  return renderOrderInquiry(params);
 }

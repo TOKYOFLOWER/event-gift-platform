@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>商品を選ぶ — はなたば</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../shared/css/style.css">
+</head>
+<body>
+
+<nav class="pub-nav">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a href="index.html" class="brand">🌸 はなたば</a>
+    <a href="order-inquiry.html" class="text-white small">注文照会</a>
+  </div>
+</nav>
+
+<main id="pageContent">
+  <div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span>読み込み中...</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../config.js"></script>
+<script src="../shared/js/utils.js"></script>
+<script src="../shared/js/api.js"></script>
+<script>
+(async () => {
+  const eventId     = qs.get('eventId');
+  const performerId = qs.get('performerId');
+
+  if (!eventId || !performerId) { location.href = 'index.html'; return; }
+
+  const cfg = getConfig();
+  const api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
+
+  let evResult, products;
+  try {
+    [evResult, products] = await Promise.all([
+      api.public.getEvent(eventId),
+      api.public.listProducts({ eventId, category: 'FLOWER' })
+    ]);
+  } catch (e) {
+    setHtml('#pageContent', `<div class="container py-5"><div class="error-banner">${esc(e.message)}</div></div>`);
+    return;
+  }
+
+  const { event: ev, performers } = evResult;
+  const performer = performers.find(p => p.performerId === performerId);
+
+  if (!performer) {
+    setHtml('#pageContent', `<div class="container py-5"><div class="error-banner">出演者が見つかりません。</div></div>`);
+    return;
+  }
+
+  // 商品カード
+  let selectedProductId = null;
+
+  const cardsHtml = products.map(p => `
+    <div class="col-6 col-md-4">
+      <label class="product-card d-block h-100 p-3" data-product-id="${esc(p.productId)}" onclick="selectProduct('${esc(p.productId)}')">
+        ${p.imageUrl
+          ? `<img src="${esc(p.imageUrl)}" class="product-img mb-2" alt="${esc(p.name)}">`
+          : `<div class="product-img-placeholder mb-2">🌸</div>`}
+        <p class="fw-bold mb-0">${esc(p.name)}</p>
+        <p class="text-danger fw-bold mb-0">${fmtJPY(p.priceJPY)}</p>
+        ${p.description ? `<p class="small text-muted mb-0">${esc(p.description)}</p>` : ''}
+      </label>
+    </div>`).join('');
+
+  const avatar = performer.avatarUrl
+    ? `<img src="${esc(performer.avatarUrl)}" class="performer-avatar" style="width:56px;height:56px" alt="${esc(performer.displayName)}">`
+    : `<div class="performer-avatar-placeholder" style="width:56px;height:56px;font-size:1.5rem">🎤</div>`;
+
+  setHtml('#pageContent', `
+    <div class="container py-4" style="max-width:900px">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb small">
+          <li class="breadcrumb-item"><a href="index.html">TOP</a></li>
+          <li class="breadcrumb-item"><a href="event-detail.html?id=${esc(eventId)}">${esc(ev.title)}</a></li>
+          <li class="breadcrumb-item active">商品選択</li>
+        </ol>
+      </nav>
+
+      <div class="d-flex align-items-center gap-3 mb-4">
+        ${avatar}
+        <div>
+          <h2 class="fw-bold mb-0">${esc(performer.displayName)}</h2>
+          <p class="text-muted small mb-0">${esc(ev.title)} への差し入れ</p>
+        </div>
+      </div>
+
+      <h4 class="fw-bold mb-3">🌸 商品を選ぶ</h4>
+
+      ${products.length ? `
+        <div class="row g-3 mb-4">${cardsHtml}</div>
+
+        <div id="selectedInfo" class="alert alert-success d-none" style="border-left:4px solid #28a745">
+          選択中: <strong id="selectedName"></strong> — <strong id="selectedPrice"></strong>
+        </div>
+
+        <div class="d-grid mt-3">
+          <button id="nextBtn" class="btn-gift btn-lg py-3 text-center" disabled onclick="goNext()">
+            次へ：メッセージを入力 →
+          </button>
+        </div>
+      ` : '<p class="text-muted">現在取り扱い商品がありません。</p>'}
+    </div>`);
+
+  // 商品選択ロジック（グローバル関数として定義）
+  const productsData = Object.fromEntries(products.map(p => [p.productId, p]));
+
+  window.selectProduct = (productId) => {
+    selectedProductId = productId;
+    const p = productsData[productId];
+    if (!p) return;
+
+    // スタイル更新
+    $$('.product-card').forEach(el => el.classList.remove('selected'));
+    const card = $(`[data-product-id="${productId}"]`);
+    if (card) card.classList.add('selected');
+
+    // 選択情報表示
+    setText('#selectedName', p.name);
+    setText('#selectedPrice', fmtJPY(p.priceJPY));
+    show('#selectedInfo');
+
+    const btn = document.getElementById('nextBtn');
+    if (btn) btn.disabled = false;
+  };
+
+  window.goNext = () => {
+    if (!selectedProductId) return;
+    location.href = `gift-checkout.html?eventId=${encodeURIComponent(eventId)}&performerId=${encodeURIComponent(performerId)}&productId=${encodeURIComponent(selectedProductId)}`;
+  };
+})();
+</script>
+</body>
+</html>

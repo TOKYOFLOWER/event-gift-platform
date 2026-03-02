@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>イベント詳細 — はなたば</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../shared/css/style.css">
+</head>
+<body>
+
+<nav class="pub-nav">
+  <div class="container d-flex align-items-center justify-content-between">
+    <a href="index.html" class="brand">🌸 はなたば</a>
+    <a href="order-inquiry.html" class="text-white small">注文照会</a>
+  </div>
+</nav>
+
+<main id="pageContent">
+  <div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span>読み込み中...</div>
+</main>
+
+<footer class="border-top py-4 mt-5">
+  <div class="container text-center text-muted small">&copy; 2026 はなたば.</div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../config.js"></script>
+<script src="../shared/js/utils.js"></script>
+<script src="../shared/js/api.js"></script>
+<script>
+(async () => {
+  const eventId = qs.get('id');
+  if (!eventId) { location.href = 'index.html'; return; }
+
+  const cfg = getConfig();
+  const api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
+
+  let result;
+  try {
+    result = await api.public.getEvent(eventId);
+  } catch (e) {
+    setHtml('#pageContent', `<div class="container py-5"><div class="error-banner">${esc(e.message)}</div></div>`);
+    return;
+  }
+
+  const { event: ev, sessions, ticketTypes, performers, publicMessages } = result;
+
+  // ページタイトル
+  document.title = ev.title + ' — はなたば';
+
+  // 締切バナー
+  let deadlineBanner = '';
+  if (ev.giftDeadlineAt) {
+    deadlineBanner = ev.isGiftOpen
+      ? `<div class="alert alert-warning">⏰ <strong>差し入れ受付締切:</strong> ${fmtDateTime(ev.giftDeadlineAt)}</div>`
+      : `<div class="alert alert-secondary">差し入れの受付は終了しました。</div>`;
+  }
+
+  // セッション一覧
+  const sessionsHtml = sessions.length ? sessions.map(s => `
+    <div class="d-flex gap-3 align-items-start mb-2">
+      <span style="font-size:1.2rem">🍽</span>
+      <div>
+        <strong>${esc(s.sessionLabel)}</strong><br>
+        <span class="text-muted small">
+          ${s.doorsAt ? 'open ' + fmtTime(s.doorsAt) + ' / ' : ''}
+          start ${fmtTime(s.startAt)}
+          ${s.endAt ? ' / close ' + fmtTime(s.endAt) : ''}
+        </span>
+      </div>
+    </div>`).join('') : '';
+
+  // 券種一覧
+  const ticketsHtml = ticketTypes.length ? `
+    <ul class="list-group mb-3">
+      ${ticketTypes.map(t => `
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <strong>${esc(t.label)}</strong>
+            ${t.description ? `<br><small class="text-muted">${esc(t.description)}</small>` : ''}
+            ${t.conditions   ? `<br><small class="text-danger">${esc(t.conditions)}</small>` : ''}
+          </div>
+          <span class="fw-bold">${fmtJPY(t.priceJPY)}</span>
+        </li>`).join('')}
+    </ul>` : '';
+
+  // 会場情報
+  const mapQ = encodeURIComponent([ev.venueName, ev.venuePref, ev.venueCity, ev.venueAddress].filter(Boolean).join(' '));
+  const venueHtml = `
+    <p class="mb-1"><strong>${esc(ev.venueName)}</strong></p>
+    ${ev.venuePostalCode ? `<p class="small text-muted mb-0">〒${esc(ev.venuePostalCode)}</p>` : ''}
+    <p class="small text-muted mb-1">${[ev.venuePref, ev.venueCity, ev.venueAddress].filter(Boolean).map(esc).join('')}</p>
+    ${ev.venueAccess ? `<p class="small">🚃 ${esc(ev.venueAccess)}</p>` : ''}
+    <a href="https://maps.google.com/?q=${mapQ}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">Google Maps で見る</a>`;
+
+  // 出演者カード
+  const performersHtml = performers.map(p => {
+    const avatar = p.avatarUrl
+      ? `<img src="${esc(p.avatarUrl)}" class="performer-avatar" alt="${esc(p.displayName)}">`
+      : `<div class="performer-avatar-placeholder">🎤</div>`;
+
+    let giftBtn = '';
+    if (p.isGiftEnabled) {
+      giftBtn = ev.isGiftOpen
+        ? `<a href="gift-products.html?eventId=${esc(eventId)}&performerId=${esc(p.performerId)}" class="btn-gift d-inline-block mt-2 px-3 py-2" style="font-size:.85rem">🌸 差し入れを贈る</a>`
+        : `<span class="badge bg-secondary mt-2">受付終了</span>`;
+    }
+
+    return `
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="performer-card">
+          ${avatar}
+          <p class="fw-bold mb-0 mt-2">${esc(p.displayName)}</p>
+          ${p.titleOrGroup ? `<p class="text-muted small mb-1">${esc(p.titleOrGroup)}</p>` : ''}
+          ${p.snsUrl ? `<a href="${esc(p.snsUrl)}" target="_blank" rel="noopener" class="small text-muted">SNS ↗</a>` : ''}
+          <div>${giftBtn}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // 応援メッセージ
+  const messagesHtml = publicMessages.slice(0, 20).map(m => {
+    const name = m.isAnonymous ? '匿名' : esc(m.buyerName || '匿名');
+    return `
+      <div class="border rounded p-3 mb-2">
+        <p class="mb-1">${esc(m.message)}</p>
+        <small class="text-muted">— ${name}${m.performerName ? ` → ${esc(m.performerName)}` : ''}</small>
+      </div>`;
+  }).join('');
+
+  // カバー画像
+  const cover = ev.coverImageUrl
+    ? `<div style="height:320px;overflow:hidden"><img src="${esc(ev.coverImageUrl)}" class="w-100 h-100" style="object-fit:cover" alt="${esc(ev.title)}"></div>`
+    : `<div style="height:200px;background:linear-gradient(135deg,#c0392b,#922b21);display:flex;align-items:center;justify-content:center"><span style="font-size:5rem">🌸</span></div>`;
+
+  setHtml('#pageContent', `
+    ${cover}
+    <div class="container py-4">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb small">
+          <li class="breadcrumb-item"><a href="index.html">イベント一覧</a></li>
+          <li class="breadcrumb-item active">${esc(ev.title)}</li>
+        </ol>
+      </nav>
+
+      <div class="row">
+        <div class="col-lg-8">
+          <h1 class="fw-bold">${esc(ev.title)}</h1>
+          ${(ev.genre || ev.category) ? `<p class="text-muted">${[ev.genre, ev.category].filter(Boolean).map(esc).join(' / ')}</p>` : ''}
+
+          ${sessions.length ? `<h5 class="fw-bold mt-4">📅 公演日時</h5>${sessionsHtml}` : ''}
+          ${ticketTypes.length ? `<h5 class="fw-bold mt-4">🎫 チケット料金</h5>${ticketsHtml}` : ''}
+          ${ev.ticketUrl ? `<a href="${esc(ev.ticketUrl)}" target="_blank" rel="noopener" class="btn btn-outline-danger mb-3">チケット購入サイトへ ↗</a>` : ''}
+          ${ev.eventNotes ? `<h5 class="fw-bold mt-4">📝 備考</h5><p class="text-muted" style="white-space:pre-line">${esc(ev.eventNotes)}</p>` : ''}
+          ${ev.description ? `<p style="white-space:pre-line">${esc(ev.description)}</p>` : ''}
+        </div>
+
+        <div class="col-lg-4 mt-4 mt-lg-0">
+          <div class="card p-3 mb-3">
+            <h6 class="fw-bold">📍 会場情報</h6>
+            ${venueHtml}
+          </div>
+          ${ev.contactInfo ? `<div class="card p-3"><h6 class="fw-bold">📧 お問い合わせ</h6><p class="small mb-0">${esc(ev.contactInfo)}</p></div>` : ''}
+        </div>
+      </div>
+
+      <h4 class="fw-bold mt-5">🌸 差し入れを贈る</h4>
+      ${deadlineBanner}
+      ${performers.length
+        ? `<div class="row g-3">${performersHtml}</div>`
+        : '<p class="text-muted">出演者情報は準備中です。</p>'}
+
+      ${publicMessages.length ? `
+        <h5 class="fw-bold mt-5">💬 応援メッセージ</h5>
+        ${messagesHtml}` : ''}
+    </div>`);
+})();
+</script>
+</body>
+</html>

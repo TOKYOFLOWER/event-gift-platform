@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>出演者管理 — はなたば Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="../shared/css/style.css">
+</head>
+<body>
+<div id="pageContent">
+  <div id="viewList">
+    <div class="d-flex justify-content-end mb-3">
+      <button class="btn btn-primary" onclick="showForm(null)">+ 出演者登録</button>
+    </div>
+    <div id="listArea"><div class="loading-spinner"><span class="spinner-border spinner-border-sm me-2"></span></div></div>
+  </div>
+
+  <div id="viewForm" class="d-none">
+    <div class="d-flex align-items-center gap-2 mb-3">
+      <button class="btn btn-sm btn-outline-secondary" onclick="showList()">← 一覧に戻る</button>
+      <h5 class="mb-0 fw-bold" id="formTitle">出演者登録</h5>
+    </div>
+    <div id="formError" class="error-banner d-none mb-3"></div>
+
+    <form id="performerForm" novalidate style="max-width:640px">
+      <div class="form-section">
+        <p class="form-section-title">出演者情報</p>
+        <div class="mb-3"><label class="form-label fw-semibold">表示名 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="displayName" required></div>
+        <div class="mb-3"><label class="form-label">肩書き・グループ名</label>
+          <input type="text" class="form-control" name="titleOrGroup" placeholder="フルートカルテット 花"></div>
+        <div class="mb-3"><label class="form-label">プロフィール</label>
+          <textarea class="form-control" name="bio" rows="5"></textarea></div>
+        <div class="mb-3"><label class="form-label">プロフィール画像URL</label>
+          <input type="url" class="form-control" name="avatarUrl" placeholder="https://...">
+          <div id="avatarPreview" class="mt-2"></div></div>
+        <div class="mb-3"><label class="form-label">SNSリンク</label>
+          <input type="url" class="form-control" name="snsUrl" placeholder="https://twitter.com/..."></div>
+        <div id="activeToggle" class="d-none mb-3">
+          <div class="form-check form-switch">
+            <input type="checkbox" class="form-check-input" name="isActive" id="isActiveChk" checked>
+            <label class="form-check-label" for="isActiveChk">有効</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+        <button type="button" class="btn btn-outline-secondary" onclick="showList()">キャンセル</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="../config.js"></script>
+<script src="../shared/js/utils.js"></script>
+<script src="../shared/js/auth.js"></script>
+<script src="../shared/js/api.js"></script>
+<script src="../shared/js/admin-layout.js"></script>
+<script>
+initAdminLayout({ pageTitle: '出演者管理', activeNav: 'performers' });
+
+let api, currentId = null;
+
+Auth.init({
+  onLogin: (userInfo, token) => {
+    setTopbarUser(userInfo);
+    const cfg = getConfig();
+    api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
+    api.admin.setToken(token);
+    loadList();
+  },
+  onLogout: () => { location.href = 'index.html'; }
+});
+if (!Auth.isLoggedIn()) location.href = 'index.html';
+
+async function loadList() {
+  showLoading('#listArea');
+  try {
+    const performers = await api.admin.listPerformers();
+    setHtml('#listArea', renderTable({
+      cols: [
+        { label: '出演者名', key: 'displayName', render: r => `
+          <div class="d-flex align-items-center gap-2">
+            ${r.avatarUrl ? `<img src="${esc(r.avatarUrl)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover">` : '<span style="font-size:1.5rem">🎤</span>'}
+            <span>${esc(r.displayName)}</span>
+          </div>` },
+        { label: '肩書き', key: 'titleOrGroup' },
+        { label: '状態', key: 'isActive', render: r => r.isActive ? '<span class="badge bg-success">有効</span>' : '<span class="badge bg-secondary">無効</span>' },
+        { label: '', key: '_act', render: r => `
+          <button class="btn btn-sm btn-outline-primary" onclick="showForm('${esc(r.performerId)}')">編集</button>` }
+      ],
+      rows: performers,
+      emptyMsg: '出演者が登録されていません'
+    }));
+  } catch (e) { showError('#listArea', e.message); }
+}
+
+function showList() { hide('#viewForm'); show('#viewList'); currentId = null; loadList(); }
+
+async function showForm(performerId) {
+  currentId = performerId;
+  hide('#viewList'); show('#viewForm');
+  hide('#formError');
+  document.getElementById('performerForm').reset();
+  hide('#activeToggle');
+
+  if (performerId) {
+    setText('#formTitle', '出演者編集');
+    show('#activeToggle');
+    try {
+      const p = await api.admin.getPerformer(performerId);
+      const form = document.getElementById('performerForm');
+      ['displayName','titleOrGroup','bio','avatarUrl','snsUrl'].forEach(k => {
+        if (form.elements[k] && p[k] != null) form.elements[k].value = p[k];
+      });
+      document.getElementById('isActiveChk').checked = !!p.isActive;
+      updateAvatarPreview(p.avatarUrl);
+    } catch (e) { showError('#formError', e.message); }
+  } else {
+    setText('#formTitle', '出演者登録');
+  }
+}
+
+function updateAvatarPreview(url) {
+  setHtml('#avatarPreview', url
+    ? `<img src="${esc(url)}" style="width:64px;height:64px;border-radius:50%;object-fit:cover">`
+    : '');
+}
+
+$('[name=avatarUrl]')?.addEventListener('input', e => updateAvatarPreview(e.target.value));
+
+document.getElementById('performerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = '保存中...';
+  hide('#formError');
+
+  const data = formToObj(e.target);
+  try {
+    if (currentId) {
+      await api.admin.updatePerformer({ id: currentId, ...data });
+    } else {
+      await api.admin.createPerformer(data);
+    }
+    toast('保存しました');
+    showList();
+  } catch (err) {
+    showError('#formError', err.message);
+  }
+  btn.disabled = false; btn.textContent = '保存';
+});
+</script>
+</body>
+</html>
