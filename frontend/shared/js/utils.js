@@ -78,16 +78,21 @@ function esc(s) {
 // ─────────────────────────────────────────────
 
 const STATUS_LABEL = {
+  // Event status
   DRAFT:     '下書き',
   PUBLISHED: '公開中',
   CLOSED:    '終了',
+  // Payment status
   PENDING:   '保留中',
   PAID:      '確定',
   CANCELED:  'キャンセル',
   REFUNDED:  '返金済み',
-  PENDING_DELIVERY: '未発送',
-  DELIVERED:        '発送済み',
-  COMPLETED:        '完了',
+  // Fulfillment status
+  NEW:       '新規',
+  PREPARING: '準備中',
+  SHIPPED:   '配送済み',
+  DELIVERED: '受取済み',
+  RECEIVED:  '出演者渡し済み',
 };
 
 function statusBadge(status) {

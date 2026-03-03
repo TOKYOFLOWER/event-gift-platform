@@ -135,6 +135,13 @@ a:hover { color: var(--primary-dk); }
 .badge-CANCELED  { background: #dc3545 !important; }
 .badge-REFUNDED  { background: #6610f2 !important; }
 
+/* fulfillment ステータス */
+.badge-NEW       { background: #ffc107 !important; color: #000 !important; }
+.badge-PREPARING { background: #17a2b8 !important; }
+.badge-SHIPPED   { background: #007bff !important; }
+.badge-DELIVERED { background: #28a745 !important; }
+.badge-RECEIVED  { background: #6f42c1 !important; }
+
 /* ── Admin レイアウト ────────────────────────────────── */
 
 .admin-layout {

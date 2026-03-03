@@ -32,9 +32,11 @@
         <label class="form-label small">お届け状況</label>
         <select id="filterFulfill" class="form-select form-select-sm">
           <option value="">すべて</option>
-          <option value="PENDING_DELIVERY">未発送</option>
-          <option value="DELIVERED">発送済み</option>
-          <option value="COMPLETED">完了</option>
+          <option value="NEW">新規</option>
+          <option value="PREPARING">準備中</option>
+          <option value="SHIPPED">配送済み</option>
+          <option value="DELIVERED">受取済み</option>
+          <option value="RECEIVED">出演者渡し済み</option>
         </select>
       </div>
       <div class="col-md-3">
@@ -140,7 +142,7 @@ async function showDetail(orderId) {
     const { order: o, product, performer, event: ev } = await api.admin.getOrder(orderId);
     setText('#modalTitle', o.gmoOrderId);
 
-    const FULFILL_STATUSES = ['PENDING_DELIVERY', 'DELIVERED', 'COMPLETED'];
+    const FULFILL_STATUSES = ['NEW', 'PREPARING', 'SHIPPED', 'DELIVERED', 'RECEIVED'];
 
     setHtml('#modalBody', `
       <div class="row">
