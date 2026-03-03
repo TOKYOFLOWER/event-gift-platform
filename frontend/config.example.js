@@ -19,18 +19,6 @@ window.GAS_CONFIG = {
   // 例: 'https://hanataba.tokyoflower.jp/public'
   frontendBaseUrl: 'https://your-domain.vercel.app/public',
 
-  // ── GMO-PG OpenAPIタイプ 設定 ──────────────────────────────────
-  //
-  // GMO 加盟店管理画面 → ショップ設定 → ショップID
-  // ★ この値はフロントエンドに公開されます（token.js 初期化に必要）
-  // ★ ShopPassword はフロントエンドに含めないでください（GAS側に設定）
-  gmoShopId: 'YOUR_GMO_SHOP_ID',
-
-  // GMO token.js の URL
-  //   テスト環境: 'https://stg.static.mul-pay.jp/token.js'
-  //   本番環境:   'https://static.mul-pay.jp/token.js'
-  gmoTokenJsUrl: 'https://stg.static.mul-pay.jp/token.js',
-
   // ── 環境 ───────────────────────────────────────────────────────
   // 'development' | 'staging' | 'production'
   env: 'development'
