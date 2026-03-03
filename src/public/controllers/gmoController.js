@@ -58,9 +58,15 @@ function apiCreatePublicOrder(params) {
     throw closedError('差し入れの受付期間が終了しています');
   }
 
-  // ── 受取先解決 ───────────────────────────────────────────────
+  // ── 受取先解決（未設定なら会場受取をデフォルト作成）───────────
   var receiver = getDefaultReceiverForEvent(params.eventId);
-  if (!receiver) throw new Error('受取設定が完了していません。管理者にお問い合わせください。');
+  if (!receiver) {
+    receiver = createReceiver({
+      eventId:      params.eventId,
+      receiveType:  RECEIVE_TYPE.VENUE,
+      shippingName: ev.title || ''
+    });
+  }
 
   // ── Orders シートに PENDING で登録 ──────────────────────────
   var order = createOrder({

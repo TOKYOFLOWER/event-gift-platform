@@ -107,6 +107,14 @@ function apiCreateEvent(params, user) {
     ? params.organizerId
     : (user.organizerId || user.userId);
   var ev = createEvent(data);
+
+  // デフォルト受取先（会場受取）を自動作成
+  createReceiver({
+    eventId:      ev.eventId,
+    receiveType:  RECEIVE_TYPE.VENUE,
+    shippingName: data.venueName || ev.title || ''
+  });
+
   writeAuditLog(user.email, 'CREATE_EVENT', ENTITY_TYPE.EVENT, ev.eventId, null, { title: ev.title });
   return ev;
 }
