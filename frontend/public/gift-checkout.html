@@ -249,6 +249,15 @@
     btn.textContent = '処理中...';
     hide('#formError');
 
+    // ── 贈り主情報バリデーション ─────────────────────────────
+    const emailVal = e.target.querySelector('[name=buyerEmail]').value.trim();
+    if (!emailVal) {
+      showCardError('メールアドレスを入力してください。'); return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailVal)) {
+      showCardError('メールアドレスの形式が正しくありません。'); return;
+    }
+
     // ── カード情報バリデーション ──────────────────────────────
     const cardNo     = document.getElementById('cardNo').value.replace(/\s/g, '');
     const expireRaw  = document.getElementById('cardExpire').value;

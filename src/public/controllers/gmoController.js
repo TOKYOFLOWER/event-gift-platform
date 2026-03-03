@@ -51,11 +51,11 @@ function apiGetShopId() {
  */
 function apiCreatePublicOrder(params) {
   // ── バリデーション ──────────────────────────────────────────
-  if (!params.eventId)     throw badRequest('eventId は必須です');
-  if (!params.performerId) throw badRequest('performerId は必須です');
-  if (!params.productId)   throw badRequest('productId は必須です');
-  if (!params.buyerEmail)  throw badRequest('buyerEmail は必須です');
-  if (!params.gmoToken)    throw badRequest('gmoToken は必須です');
+  if (!params.eventId)     throw badRequest('イベントが指定されていません');
+  if (!params.performerId) throw badRequest('出演者が指定されていません');
+  if (!params.productId)   throw badRequest('商品が指定されていません');
+  if (!params.buyerEmail)  throw badRequest('メールアドレスを入力してください');
+  if (!params.gmoToken)    throw badRequest('カード情報の取得に失敗しました。再度お試しください');
   validateEmail(params.buyerEmail);
 
   // ── エンティティ取得 ────────────────────────────────────────
