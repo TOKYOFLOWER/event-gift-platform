@@ -225,13 +225,15 @@ function callGmoOpenApiCharge(order, token, returnBaseUrl) {
   logPayload.creditInformation.tokenizedCard.token = '***masked***';
   Logger.log('[GMO charge] request payload: ' + JSON.stringify(logPayload));
 
-  var auth = Utilities.base64Encode(shopId + ':' + shopPass);
+  var credentials = shopId + ':' + shopPass;
+  var encoded = Utilities.base64Encode(credentials, Utilities.Charset.UTF_8);
+  var authHeader = 'Basic ' + encoded;
 
   var options = {
     method:             'post',
     contentType:        'application/json;charset=utf-8',
     headers: {
-      'Authorization':   'Basic ' + auth,
+      'Authorization':   authHeader,
       'Idempotency-Key': order.gmoOrderId
     },
     payload:            JSON.stringify(payload),
@@ -313,12 +315,14 @@ function handleGmoWebhook(data) {
     var shopPass = getScriptProperty(PROP.GMO_SHOP_PASS);
     var env     = getScriptProperty(PROP.APP_ENV);
     var apiBase = env === 'production' ? GMO_OPENAPI_PROD : GMO_OPENAPI_TEST;
-    var auth = Utilities.base64Encode(shopId + ':' + shopPass);
+    var credentials = shopId + ':' + shopPass;
+    var encoded = Utilities.base64Encode(credentials, Utilities.Charset.UTF_8);
+    var authHeader = 'Basic ' + encoded;
 
     var inquiryResp = UrlFetchApp.fetch(apiBase + '/order/inquiry', {
       method:             'post',
       contentType:        'application/json;charset=utf-8',
-      headers:            { 'Authorization': 'Basic ' + auth },
+      headers:            { 'Authorization': authHeader },
       payload:            JSON.stringify({ orderId: order.gmoOrderId }),
       muteHttpExceptions: true
     });
