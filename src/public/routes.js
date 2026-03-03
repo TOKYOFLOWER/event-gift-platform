@@ -12,10 +12,11 @@
  *   ?action=getEvent&id=xxx                      イベント詳細（セッション・券種・出演者込み）
  *   ?action=listProducts[&category=FLOWER]       販売中商品一覧
  *   ?action=inquireOrder&gmoOrderId=xxx&email=xx 注文照会
+ *   ?action=getShopId                            GMO ShopID（token.js初期化用）
  *
  * POST
- *   ?action=createOrder                          注文作成 → GMO-PG URL を返す
- *   (action なし & OrderID あり)                 GMO-PG 結果通知（Code.js で処理）
+ *   ?action=createOrder                          注文作成 → GMO-PG トークン決済
+ *   (JSON POST with event field)                 GMO-PG OpenAPI Webhook（Code.js で処理）
  */
 
 // ─────────────────────────────────────────────
@@ -36,6 +37,9 @@ function routeGet(action, params) {
 
     case 'inquireOrder':
       return apiInquireOrder(params);
+
+    case 'getShopId':
+      return apiGetShopId();
 
     default:
       throw notFound('Unknown action: ' + action);

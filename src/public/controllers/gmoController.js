@@ -1,16 +1,13 @@
 /**
  * src/public/controllers/gmoController.js
- * GMO-PG リンクタイプPlus 連携
+ * GMO-PG OpenAPIタイプ 連携（トークン決済）
  *
  * 変更履歴:
  *   2026-03-02 Phase3 HTML実装（リンクタイプPlus）
- *   2026-03-02 Phase4 JSON API化
- *   2026-03-02 Phase5 OpenAPIタイプ v1.12.0 対応
- *   2026-03-03 Phase6 リンクタイプPlus（リダイレクト方式）に戻す
- *     - フロントにカード入力フォームを持たない
- *     - GAS で GetLinkplusUrlPayment.json を呼び決済 URL を取得
- *     - フロントは取得した URL にリダイレクトするだけ
- *     - 結果通知プログラム（doPost）で PENDING → PAID 確定
+ *   2026-03-03 Phase7 OpenAPIタイプ（トークン方式）に変更
+ *     - フロントで token.js によりカード情報をトークン化
+ *     - GAS で /credit/charge API（Basic認証）を呼び即時決済
+ *     - 3DS リダイレクトにも対応
  *
  * セキュリティ注意: カード情報・個人情報を絶対にログ出力しない
  */
@@ -19,8 +16,22 @@
 // 定数
 // ─────────────────────────────────────────────
 
-var GMO_LINKPLUS_TEST = 'https://pt01.mul-pay.jp';
-var GMO_LINKPLUS_PROD = 'https://p01.mul-pay.jp';
+var GMO_OPENAPI_TEST = 'https://stg.openapi.mul-pay.jp';
+var GMO_OPENAPI_PROD = 'https://openapi.mul-pay.jp';
+
+// ─────────────────────────────────────────────
+// ShopID 取得 API
+// ─────────────────────────────────────────────
+
+/**
+ * GET ?action=getShopId
+ * フロントエンドの token.js 初期化用に ShopID を返す。
+ */
+function apiGetShopId() {
+  var shopId = getScriptProperty(PROP.GMO_SHOP_ID);
+  if (!shopId) throw new Error('GMO_SHOP_ID が未設定です');
+  return { shopId: shopId };
+}
 
 // ─────────────────────────────────────────────
 // 注文作成 API
@@ -33,9 +44,10 @@ var GMO_LINKPLUS_PROD = 'https://p01.mul-pay.jp';
  *   eventId, performerId, productId,
  *   buyerName, buyerEmail, buyerPhone,
  *   messageToPerformer, isMessagePublic, isAnonymous,
+ *   gmoToken      : token.js で取得したカードトークン
  *   returnBaseUrl : フロントエンドのベース URL
  *
- * レスポンス: { orderId, gmoOrderId, redirectUrl }
+ * レスポンス: { orderId, gmoOrderId, status, redirectUrl? }
  */
 function apiCreatePublicOrder(params) {
   // ── バリデーション ──────────────────────────────────────────
@@ -43,6 +55,7 @@ function apiCreatePublicOrder(params) {
   if (!params.performerId) throw badRequest('performerId は必須です');
   if (!params.productId)   throw badRequest('productId は必須です');
   if (!params.buyerEmail)  throw badRequest('buyerEmail は必須です');
+  if (!params.gmoToken)    throw badRequest('gmoToken は必須です');
   validateEmail(params.buyerEmail);
 
   // ── エンティティ取得 ────────────────────────────────────────
@@ -89,85 +102,116 @@ function apiCreatePublicOrder(params) {
                      || params.isAnonymous === 'on'
   });
 
-  // ── GMO リンクタイプPlus 決済URL取得 ──────────────────────
-  var linkUrl;
+  // ── GMO OpenAPI /credit/charge ──────────────────────────────
+  var chargeResult;
   try {
-    linkUrl = getGmoLinkPlusUrl(order, params.returnBaseUrl);
+    chargeResult = callGmoOpenApiCharge(order, params.gmoToken, params.returnBaseUrl);
   } catch (err) {
-    // 決済URL取得失敗 → 注文をキャンセルして例外を再スロー
     try { updateOrderPayment(order.orderId, { paymentStatus: PAYMENT_STATUS.CANCELED }); } catch (_) {}
-    Logger.log('GMO LinkPlus error: ' + err.message);
-    throw new Error('決済サービスへの接続に失敗しました。しばらくしてから再度お試しください。');
+    Logger.log('GMO charge error: ' + err.message);
+    throw new Error('決済処理に失敗しました。カード情報を確認のうえ再度お試しください。');
   }
 
-  // ── フロントエンドへ返す ─────────────────────────────────────
+  // ── レスポンス ──────────────────────────────────────────────
+  if (chargeResult.redirectUrl) {
+    // 3DS 認証が必要 → フロントでリダイレクト
+    return {
+      orderId:     order.orderId,
+      gmoOrderId:  order.gmoOrderId,
+      status:      'REDIRECT',
+      redirectUrl: chargeResult.redirectUrl
+    };
+  }
+
+  // 即時決済成功 → PAID に更新
+  updateOrderPayment(order.orderId, {
+    paymentStatus: PAYMENT_STATUS.PAID,
+    gmoAccessId:   chargeResult.accessId  || '',
+    gmoTranId:     chargeResult.processId || '',
+    paidAt:        nowISO()
+  });
+
+  try {
+    sendOrderConfirmationEmail(order);
+    sendNewOrderNotificationToAdmin(order);
+  } catch (mailErr) {
+    Logger.log('Mail error (non-fatal): ' + mailErr.message);
+  }
+
+  writeAuditLog('SYSTEM', 'PAYMENT_CONFIRMED', ENTITY_TYPE.ORDER, order.orderId,
+    { paymentStatus: PAYMENT_STATUS.PENDING },
+    { paymentStatus: PAYMENT_STATUS.PAID });
+
   return {
     orderId:     order.orderId,
     gmoOrderId:  order.gmoOrderId,
-    redirectUrl: linkUrl
+    status:      'CAPTURED'
   };
 }
 
 // ─────────────────────────────────────────────
-// GMO リンクタイプPlus 決済URL取得
+// GMO OpenAPI /credit/charge
 // ─────────────────────────────────────────────
 
 /**
- * GMO-PG GetLinkplusUrlPayment.json を呼び、決済ページURLを返す。
+ * GMO-PG OpenAPI /credit/charge を呼ぶ。
+ * Basic認証: ShopID:ShopPass
  *
  * @param {Object} order          - createOrder() の戻り値
+ * @param {string} token          - フロントで取得したカードトークン
  * @param {string} returnBaseUrl  - フロントエンドのベース URL
- * @returns {string} GMO-PG 決済ページ URL
+ * @returns {{ processId?, accessId?, redirectUrl? }}
  */
-function getGmoLinkPlusUrl(order, returnBaseUrl) {
+function callGmoOpenApiCharge(order, token, returnBaseUrl) {
   var shopId   = getScriptProperty(PROP.GMO_SHOP_ID);
   var shopPass = getScriptProperty(PROP.GMO_SHOP_PASS);
-  var configId = getScriptProperty(PROP.GMO_CONFIG_ID);
   if (!shopId || !shopPass) throw new Error('GMO_SHOP_ID / GMO_SHOP_PASS が未設定です');
-  if (!configId) throw new Error('GMO_CONFIG_ID が未設定です');
 
   var env     = getScriptProperty(PROP.APP_ENV);
   var apiBase = getScriptProperty(PROP.GMO_API_ENDPOINT)
-                || (env === 'production' ? GMO_LINKPLUS_PROD : GMO_LINKPLUS_TEST);
+                || (env === 'production' ? GMO_OPENAPI_PROD : GMO_OPENAPI_TEST);
 
-  var endpoint = apiBase + '/payment/GetLinkplusUrlPayment.json';
+  var endpoint = apiBase + '/credit/charge';
 
-  // 結果通知URL（GAS Public doPost）
-  var notifyUrl = ScriptApp.getService().getUrl();
-
-  // 戻り先URL
-  var thankYouUrl    = buildThankYouUrl_(order, returnBaseUrl);
-  var cancelUrl      = buildCancelUrl_(order, returnBaseUrl);
+  var callbackUrl = buildThankYouUrl_(order, returnBaseUrl);
+  var webhookUrl  = ScriptApp.getService().getUrl();
 
   var payload = {
-    geturlparam: {
-      ShopID:   shopId,
-      ShopPass: shopPass
+    merchant: {
+      callbackUrl: callbackUrl,
+      webhookUrl:  webhookUrl
     },
-    configid: configId,
-    transaction: {
-      OrderID:         order.gmoOrderId,
-      Amount:          String(order.totalJPY),
-      Tax:             '0'
+    order: {
+      orderId:         order.gmoOrderId,
+      amount:          String(order.totalJPY),
+      currency:        'JPY',
+      transactionType: 'CIT'
     },
-    credit: {
-      JobCd:  'CAPTURE',
-      Method: '1'
+    payer: {
+      name:  order.buyerName  || '',
+      email: order.buyerEmail || ''
     },
-    // 結果通知プログラムURL（GMO管理画面でも設定可能だが、APIでも指定できる）
-    resultnotify: {
-      NotifyUrl: notifyUrl
-    },
-    // 購入者の戻り先
-    displayinfo: {
-      ReturnUrl: thankYouUrl,
-      CancelUrl: cancelUrl
+    creditInformation: {
+      tokenizedCard: {
+        type:  'MP_TOKEN',
+        token: token
+      },
+      creditChargeOptions: {
+        authorizationMode: 'CAPTURE',
+        paymentMethod:     'ONE_TIME'
+      }
     }
   };
+
+  var auth = Utilities.base64Encode(shopId + ':' + shopPass);
 
   var options = {
     method:             'post',
     contentType:        'application/json;charset=utf-8',
+    headers: {
+      'Authorization':   'Basic ' + auth,
+      'Idempotency-Key': order.gmoOrderId
+    },
     payload:            JSON.stringify(payload),
     muteHttpExceptions: true
   };
@@ -176,11 +220,14 @@ function getGmoLinkPlusUrl(order, returnBaseUrl) {
   var code = resp.getResponseCode();
   var body = resp.getContentText('UTF-8');
 
-  Logger.log('GMO LinkPlus GetUrl HTTP ' + code);
+  Logger.log('GMO OpenAPI charge HTTP ' + code);
 
   if (code < 200 || code >= 300) {
-    Logger.log('GMO LinkPlus error body: ' + body.slice(0, 500));
-    throw new Error('GMO-PG API error HTTP ' + code);
+    var errBody = {};
+    try { errBody = JSON.parse(body); } catch (_) {}
+    var errDetail = errBody.title || errBody.detail || body.slice(0, 300);
+    Logger.log('GMO OpenAPI error: ' + errDetail);
+    throw new Error('GMO-PG 決済エラー: ' + errDetail);
   }
 
   var result = {};
@@ -188,70 +235,76 @@ function getGmoLinkPlusUrl(order, returnBaseUrl) {
     throw new Error('GMO-PG API から不正なレスポンスを受け取りました');
   }
 
-  if (result.ErrCode) {
-    Logger.log('GMO LinkPlus ErrCode=' + result.ErrCode + ' ErrInfo=' + result.ErrInfo);
-    throw new Error('GMO-PG エラー: ' + result.ErrCode + ' ' + (result.ErrInfo || ''));
+  // 3DS リダイレクトが必要な場合
+  if (result.redirectUrl) {
+    return { redirectUrl: result.redirectUrl };
   }
 
-  if (!result.LinkUrl) {
-    throw new Error('GMO-PG から決済URLが返されませんでした');
-  }
-
-  return result.LinkUrl;
+  // 即時決済成功
+  var creditResult = result.creditResult || {};
+  return {
+    processId: creditResult.processId || '',
+    accessId:  result.accessId || ''
+  };
 }
 
 // ─────────────────────────────────────────────
-// 結果通知ハンドラ（doPost から呼ばれる）
+// GMO OpenAPI Webhook ハンドラ（doPost から呼ばれる）
 // ─────────────────────────────────────────────
 
 /**
- * GMO-PG リンクタイプPlus 結果通知プログラム（form-encoded POST）。
- * doPost(e) から params.OrderID がある場合に呼ばれる。
+ * GMO-PG OpenAPI Webhook（JSON POST）。
+ * 3DS 完了後の非同期通知を処理する。
  *
- * セキュリティ:
- *   - ShopID 検証
- *   - OrderID 存在確認
- *   - 金額照合
- *   - 冪等性チェック（既に PAID なら重複無視）
- *
- * @param {Object} params - e.parameter
- * @returns {string} '0'（正常）or 'NG'（異常）
+ * @param {Object} data - パースされた JSON ボディ
+ * @returns {string} 'OK'
  */
-function handleGmoNotification(params) {
+function handleGmoWebhook(data) {
   try {
-    if (!params.OrderID || !params.Status) {
-      Logger.log('GMO notify: missing OrderID or Status');
-      return 'NG';
+    var event    = data.event    || '';
+    var accessId = data.accessId || '';
+    var orderId  = data.orderId  || '';
+
+    Logger.log('GMO webhook event=' + event + ' orderId=' + orderId);
+
+    if (event !== 'TDS_CHARGE_FINISHED') {
+      return 'OK';
     }
 
-    // ShopID 検証（なりすまし対策）
-    var shopId = getScriptProperty(PROP.GMO_SHOP_ID);
-    if (params.ShopID && params.ShopID !== shopId) {
-      Logger.log('GMO notify: invalid ShopID');
-      return 'NG';
-    }
-
-    var order = findOrderByGmoOrderId(params.OrderID);
+    var order = orderId ? findOrderByGmoOrderId(orderId) : null;
     if (!order) {
-      Logger.log('GMO notify: order not found for ' + params.OrderID);
-      return 'NG';
+      Logger.log('GMO webhook: order not found for orderId=' + orderId);
+      return 'OK';
     }
 
-    // 冪等性チェック: 既に PAID なら重複通知として正常応答
-    if (order.paymentStatus === PAYMENT_STATUS.PAID) return '0';
+    // 冪等性チェック
+    if (order.paymentStatus === PAYMENT_STATUS.PAID) return 'OK';
 
-    // 金額照合
-    if (params.Amount && String(params.Amount) !== String(order.totalJPY)) {
-      Logger.log('GMO notify: amount mismatch. expected=' + order.totalJPY + ' got=' + params.Amount);
-      return 'NG';
-    }
+    // /order/inquiry で最終ステータスを確認
+    var shopId   = getScriptProperty(PROP.GMO_SHOP_ID);
+    var shopPass = getScriptProperty(PROP.GMO_SHOP_PASS);
+    var env      = getScriptProperty(PROP.APP_ENV);
+    var apiBase  = getScriptProperty(PROP.GMO_API_ENDPOINT)
+                   || (env === 'production' ? GMO_OPENAPI_PROD : GMO_OPENAPI_TEST);
+    var auth = Utilities.base64Encode(shopId + ':' + shopPass);
 
-    if (params.Status === 'CAPTURE' || params.Status === 'SALES') {
-      // 決済成功
+    var inquiryResp = UrlFetchApp.fetch(apiBase + '/order/inquiry', {
+      method:             'post',
+      contentType:        'application/json;charset=utf-8',
+      headers:            { 'Authorization': 'Basic ' + auth },
+      payload:            JSON.stringify({ orderId: order.gmoOrderId }),
+      muteHttpExceptions: true
+    });
+
+    var inquiryBody = {};
+    try { inquiryBody = JSON.parse(inquiryResp.getContentText('UTF-8')); } catch (_) {}
+
+    var status = inquiryBody.status || '';
+    if (status === 'CAPTURE' || status === 'SALES') {
       updateOrderPayment(order.orderId, {
         paymentStatus: PAYMENT_STATUS.PAID,
-        gmoAccessId:   params.AccessID || '',
-        gmoTranId:     params.TranID   || '',
+        gmoAccessId:   inquiryBody.accessId || accessId,
+        gmoTranId:     (inquiryBody.creditResult && inquiryBody.creditResult.processId) || '',
         paidAt:        nowISO()
       });
 
@@ -265,17 +318,12 @@ function handleGmoNotification(params) {
       writeAuditLog('SYSTEM', 'PAYMENT_CONFIRMED', ENTITY_TYPE.ORDER, order.orderId,
         { paymentStatus: PAYMENT_STATUS.PENDING },
         { paymentStatus: PAYMENT_STATUS.PAID });
-
-    } else if (params.Status === 'CANCEL' || params.Status === 'RETURN') {
-      updateOrderPayment(order.orderId, { paymentStatus: PAYMENT_STATUS.CANCELED });
-      writeAuditLog('SYSTEM', 'PAYMENT_CANCELED', ENTITY_TYPE.ORDER, order.orderId,
-        {}, { status: params.Status });
     }
 
-    return '0';
+    return 'OK';
   } catch (err) {
-    Logger.log('handleGmoNotification error: ' + err.message);
-    return 'NG';
+    Logger.log('handleGmoWebhook error: ' + err.message);
+    return 'OK';
   }
 }
 
@@ -283,22 +331,9 @@ function handleGmoNotification(params) {
 // 内部ユーティリティ
 // ─────────────────────────────────────────────
 
-/**
- * thank-you.html の完全 URL を組み立てる。
- */
 function buildThankYouUrl_(order, returnBaseUrl) {
   var base = returnBaseUrl
     ? returnBaseUrl.replace(/\/$/, '')
     : ScriptApp.getService().getUrl();
   return base + '/thank-you.html?gmoOrderId=' + encodeURIComponent(order.gmoOrderId);
-}
-
-/**
- * payment-cancel.html の完全 URL を組み立てる。
- */
-function buildCancelUrl_(order, returnBaseUrl) {
-  var base = returnBaseUrl
-    ? returnBaseUrl.replace(/\/$/, '')
-    : ScriptApp.getService().getUrl();
-  return base + '/payment-cancel.html?gmoOrderId=' + encodeURIComponent(order.gmoOrderId);
 }

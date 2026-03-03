@@ -86,23 +86,42 @@
       </div>
     </div>
 
-    <!-- ── お支払いについて ─────────────────────────────────── -->
+    <!-- ── カード情報 ─────────────────────────────────────── -->
     <div class="form-section">
-      <p class="form-section-title">お支払いについて</p>
-      <div class="border rounded-3 p-3 bg-light">
-        <p class="mb-1 fw-semibold">💳 クレジットカード決済</p>
-        <p class="text-muted small mb-0">
-          「支払いへ進む」ボタンをクリックすると、GMOペイメントサービスの安全な決済ページへ移動します。<br>
-          カード情報は決済ページで入力していただきます。VISA / Mastercard / JCB / AMEX に対応しています。
-        </p>
+      <p class="form-section-title">カード情報</p>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">カード番号 <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" id="cardNo" inputmode="numeric"
+          placeholder="4111 1111 1111 1111" maxlength="19" autocomplete="cc-number">
       </div>
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <label class="form-label fw-semibold">有効期限 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="cardExpire"
+            placeholder="MM/YY" maxlength="5" autocomplete="cc-exp">
+        </div>
+        <div class="col-6">
+          <label class="form-label fw-semibold">セキュリティコード <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="cardCvc" inputmode="numeric"
+            placeholder="123" maxlength="4" autocomplete="cc-csc">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">カード名義（任意）</label>
+        <input type="text" class="form-control" id="cardHolder"
+          placeholder="TARO YAMADA" autocomplete="cc-name" style="text-transform:uppercase">
+      </div>
+      <p class="text-muted small mb-0">
+        VISA / Mastercard / JCB / AMEX 対応。
+        カード情報は GMO ペイメントゲートウェイで安全にトークン化され、当サイトのサーバーには保存されません。
+      </p>
     </div>
 
     <!-- ── 注意事項 ───────────────────────────────────────────── -->
     <div class="alert alert-light border mb-4">
-      <p class="small text-muted mb-1">⚠️ ご注意</p>
+      <p class="small text-muted mb-1">ご注意</p>
       <ul class="small text-muted mb-0">
-        <li>「支払いへ進む」をクリックすると決済画面へ移動します</li>
+        <li>「お支払い」ボタンをクリックすると決済が実行されます</li>
         <li>決済完了後、確認メールをお送りします</li>
         <li>差し入れは会場でまとめて出演者にお渡しします</li>
       </ul>
@@ -111,7 +130,7 @@
     <div id="formError" class="error-banner d-none mb-3"></div>
 
     <div class="d-grid">
-      <button type="submit" id="submitBtn" class="btn-gift btn-lg py-3">💳 支払いへ進む</button>
+      <button type="submit" id="submitBtn" class="btn-gift btn-lg py-3">お支払い</button>
     </div>
   </form>
 
@@ -184,6 +203,37 @@
   setText('#messageTitle',  `メッセージ（${performer.displayName}さんへ）`);
   setText('#messageLabel',  `応援メッセージ（任意 — ${performer.displayName}さんへ）`);
 
+  // ── GMO ShopID 取得 & token.js ロード ──────────────────────
+  showLoading('#statusArea');
+  let shopId;
+  try {
+    const shopResult = await api.public.getShopId();
+    shopId = shopResult.shopId;
+  } catch (e) {
+    showError('#statusArea', 'GMO決済設定の取得に失敗しました。');
+    return;
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = cfg.gmoTokenJsUrl || 'https://stg.openapi.mul-pay.jp/ext/js/token.js';
+      s.onload = resolve;
+      s.onerror = () => reject(new Error('token.js の読み込みに失敗'));
+      document.head.appendChild(s);
+    });
+  } catch (e) {
+    showError('#statusArea', e.message);
+    return;
+  }
+
+  if (typeof Multipayment === 'undefined') {
+    showError('#statusArea', 'GMO token.js の初期化に失敗しました');
+    return;
+  }
+  Multipayment.init(shopId);
+  setHtml('#statusArea', '');
+
   show('#checkoutForm');
 
   // ── 文字数カウント ──────────────────────────────────────────
@@ -191,7 +241,19 @@
     setText('#msgCount', this.value.length);
   });
 
-  // ── フォーム送信 → GAS API → GMO決済ページへリダイレクト ──
+  // ── カード番号フォーマット ──────────────────────────────────
+  document.getElementById('cardNo').addEventListener('input', function () {
+    let v = this.value.replace(/\D/g, '').slice(0, 16);
+    this.value = v.replace(/(\d{4})(?=\d)/g, '$1 ');
+  });
+
+  document.getElementById('cardExpire').addEventListener('input', function () {
+    let v = this.value.replace(/\D/g, '').slice(0, 4);
+    if (v.length >= 3) v = v.slice(0, 2) + '/' + v.slice(2);
+    this.value = v;
+  });
+
+  // ── フォーム送信 ────────────────────────────────────────────
   document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
@@ -199,10 +261,49 @@
     btn.textContent = '処理中...';
     hide('#formError');
 
-    const data = formToObj(e.target);
+    // ── カード情報バリデーション ──────────────────────────────
+    const cardNo     = document.getElementById('cardNo').value.replace(/\s/g, '');
+    const expireRaw  = document.getElementById('cardExpire').value;
+    const cvc        = document.getElementById('cardCvc').value.trim();
+    const holder     = document.getElementById('cardHolder').value.trim();
 
+    if (!cardNo || cardNo.length < 13) {
+      showCardError('カード番号を正しく入力してください。'); return;
+    }
+    if (!expireRaw || expireRaw.replace(/\D/g, '').length < 4) {
+      showCardError('有効期限を正しく入力してください。'); return;
+    }
+    if (!cvc || cvc.length < 3) {
+      showCardError('セキュリティコードを入力してください。'); return;
+    }
+
+    // MM/YY → YYMM（Multipayment.getToken が要求する形式）
+    const expDigits = expireRaw.replace(/\D/g, '');
+    const expire    = expDigits.slice(2, 4) + expDigits.slice(0, 2); // YYMM
+
+    // ── token.js でトークン取得 ──────────────────────────────
+    let gmoToken;
     try {
-      // buyerEmail をセッションに保存（thank-you.html でのポーリング用）
+      const tokenResp = await new Promise((resolve, reject) => {
+        Multipayment.getToken({
+          cardno:       cardNo,
+          expire:       expire,
+          securitycode: cvc,
+          holdername:   holder || undefined,
+          tokennumber:  '1'
+        }, function (resp) {
+          if (resp.resultCode === '000') resolve(resp);
+          else reject(new Error('カード情報エラー (コード: ' + resp.resultCode + ')'));
+        });
+      });
+      gmoToken = tokenResp.tokenObject.token;
+    } catch (err) {
+      showCardError(err.message); return;
+    }
+
+    // ── GAS API で決済実行 ───────────────────────────────────
+    const data = formToObj(e.target);
+    try {
       store.set('last_buyer_email', data.buyerEmail);
 
       const result = await api.public.createOrder({
@@ -215,19 +316,29 @@
         messageToPerformer: data.messageToPerformer  || '',
         isMessagePublic:    data.isMessagePublic      || '',
         isAnonymous:        data.isAnonymous          || '',
+        gmoToken:           gmoToken,
         returnBaseUrl:      cfg.frontendBaseUrl || ''
       });
 
-      // GMO-PG 決済ページへリダイレクト
-      location.href = result.redirectUrl;
-
+      if (result.redirectUrl) {
+        // 3DS 認証リダイレクト
+        location.href = result.redirectUrl;
+      } else {
+        // 即時決済完了 → thank-you へ
+        location.href = 'thank-you.html?gmoOrderId=' + encodeURIComponent(result.gmoOrderId);
+      }
     } catch (err) {
-      setHtml('#formError', esc(err.message));
-      show('#formError');
-      btn.disabled    = false;
-      btn.textContent = '💳 支払いへ進む';
+      showCardError(err.message);
     }
   });
+
+  function showCardError(msg) {
+    setHtml('#formError', esc(msg));
+    show('#formError');
+    const btn = document.getElementById('submitBtn');
+    btn.disabled    = false;
+    btn.textContent = 'お支払い';
+  }
 
 })();
 </script>

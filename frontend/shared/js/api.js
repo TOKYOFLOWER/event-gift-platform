@@ -180,9 +180,12 @@ class GasPublicClient extends GasClient {
   /** 注文照会（メール照合あり） */
   inquireOrder(gmoOrderId, email)  { return this.get('inquireOrder', { gmoOrderId, email }); }
 
+  /** GMO ShopID 取得（token.js 初期化用） */
+  getShopId()                      { return this.get('getShopId'); }
+
   /**
-   * 注文作成 → GMO-PG 決済URL を返す
-   * レスポンス: { orderId, gmoOrderId, redirectUrl }
+   * 注文作成 → GMO-PG トークン決済
+   * レスポンス: { orderId, gmoOrderId, status, redirectUrl? }
    */
   createOrder(body)                { return this.post('createOrder', body); }
 }
