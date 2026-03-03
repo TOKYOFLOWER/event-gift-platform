@@ -170,11 +170,10 @@ function callGmoOpenApiCharge(order, token, returnBaseUrl) {
 
   if (!shopId || !shopPass) throw new Error('GMO_SHOP_ID / GMO_SHOP_PASS が未設定です');
 
-  var env           = getScriptProperty(PROP.APP_ENV);
-  var customEndpoint = getScriptProperty(PROP.GMO_API_ENDPOINT);
-  var apiBase       = customEndpoint || (env === 'production' ? GMO_OPENAPI_PROD : GMO_OPENAPI_TEST);
+  var env     = getScriptProperty(PROP.APP_ENV);
+  var apiBase = env === 'production' ? GMO_OPENAPI_PROD : GMO_OPENAPI_TEST;
 
-  Logger.log('[GMO charge] env=' + (env || '(empty)') + ' GMO_API_ENDPOINT=' + (customEndpoint || '(not set)') + ' → apiBase=' + apiBase);
+  Logger.log('[GMO charge] env=' + (env || '(empty)') + ' apiBase=' + apiBase);
 
   var endpoint = apiBase + '/credit/charge';
 
@@ -305,9 +304,8 @@ function handleGmoWebhook(data) {
     // /order/inquiry で最終ステータスを確認
     var shopId   = getScriptProperty(PROP.GMO_SHOP_ID);
     var shopPass = getScriptProperty(PROP.GMO_SHOP_PASS);
-    var env      = getScriptProperty(PROP.APP_ENV);
-    var apiBase  = getScriptProperty(PROP.GMO_API_ENDPOINT)
-                   || (env === 'production' ? GMO_OPENAPI_PROD : GMO_OPENAPI_TEST);
+    var env     = getScriptProperty(PROP.APP_ENV);
+    var apiBase = env === 'production' ? GMO_OPENAPI_PROD : GMO_OPENAPI_TEST;
     var auth = Utilities.base64Encode(shopId + ':' + shopPass);
 
     var inquiryResp = UrlFetchApp.fetch(apiBase + '/order/inquiry', {
