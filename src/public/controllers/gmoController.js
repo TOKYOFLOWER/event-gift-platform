@@ -165,16 +165,27 @@ function apiCreatePublicOrder(params) {
 function callGmoOpenApiCharge(order, token, returnBaseUrl) {
   var shopId   = getScriptProperty(PROP.GMO_SHOP_ID);
   var shopPass = getScriptProperty(PROP.GMO_SHOP_PASS);
+
+  Logger.log('[GMO charge] shopId=' + (shopId || '(empty)') + ' shopPass=' + (shopPass ? '***set***' : '(empty)'));
+
   if (!shopId || !shopPass) throw new Error('GMO_SHOP_ID / GMO_SHOP_PASS が未設定です');
 
-  var env     = getScriptProperty(PROP.APP_ENV);
-  var apiBase = getScriptProperty(PROP.GMO_API_ENDPOINT)
-                || (env === 'production' ? GMO_OPENAPI_PROD : GMO_OPENAPI_TEST);
+  var env           = getScriptProperty(PROP.APP_ENV);
+  var customEndpoint = getScriptProperty(PROP.GMO_API_ENDPOINT);
+  var apiBase       = customEndpoint || (env === 'production' ? GMO_OPENAPI_PROD : GMO_OPENAPI_TEST);
+
+  Logger.log('[GMO charge] env=' + (env || '(empty)') + ' GMO_API_ENDPOINT=' + (customEndpoint || '(not set)') + ' → apiBase=' + apiBase);
 
   var endpoint = apiBase + '/credit/charge';
 
   var callbackUrl = buildThankYouUrl_(order, returnBaseUrl);
   var webhookUrl  = ScriptApp.getService().getUrl();
+
+  Logger.log('[GMO charge] endpoint=' + endpoint);
+  Logger.log('[GMO charge] orderId=' + order.gmoOrderId + ' amount=' + order.totalJPY);
+  Logger.log('[GMO charge] callbackUrl=' + callbackUrl);
+  Logger.log('[GMO charge] webhookUrl=' + webhookUrl);
+  Logger.log('[GMO charge] token length=' + (token ? token.length : 0));
 
   var payload = {
     merchant: {
@@ -203,6 +214,11 @@ function callGmoOpenApiCharge(order, token, returnBaseUrl) {
     }
   };
 
+  // ペイロードログ（トークンはマスク）
+  var logPayload = JSON.parse(JSON.stringify(payload));
+  logPayload.creditInformation.tokenizedCard.token = '***masked***';
+  Logger.log('[GMO charge] request payload: ' + JSON.stringify(logPayload));
+
   var auth = Utilities.base64Encode(shopId + ':' + shopPass);
 
   var options = {
@@ -220,28 +236,34 @@ function callGmoOpenApiCharge(order, token, returnBaseUrl) {
   var code = resp.getResponseCode();
   var body = resp.getContentText('UTF-8');
 
-  Logger.log('GMO OpenAPI charge HTTP ' + code);
+  // レスポンス全体をログ
+  Logger.log('[GMO charge] HTTP ' + code + ' response: ' + body.slice(0, 1000));
 
   if (code < 200 || code >= 300) {
     var errBody = {};
     try { errBody = JSON.parse(body); } catch (_) {}
-    var errDetail = errBody.title || errBody.detail || body.slice(0, 300);
-    Logger.log('GMO OpenAPI error: ' + errDetail);
-    throw new Error('GMO-PG 決済エラー: ' + errDetail);
+    var errDetail = errBody.detail || errBody.title || body.slice(0, 500);
+    Logger.log('[GMO charge] ERROR detail=' + errDetail + ' type=' + (errBody.type || ''));
+    throw new Error('GMO-PG 決済エラー (HTTP ' + code + '): ' + errDetail);
   }
 
   var result = {};
   try { result = JSON.parse(body); } catch (_) {
+    Logger.log('[GMO charge] JSON parse failed: ' + body.slice(0, 500));
     throw new Error('GMO-PG API から不正なレスポンスを受け取りました');
   }
 
+  Logger.log('[GMO charge] success keys: ' + Object.keys(result).join(','));
+
   // 3DS リダイレクトが必要な場合
   if (result.redirectUrl) {
+    Logger.log('[GMO charge] 3DS redirect required');
     return { redirectUrl: result.redirectUrl };
   }
 
   // 即時決済成功
   var creditResult = result.creditResult || {};
+  Logger.log('[GMO charge] CAPTURED processId=' + (creditResult.processId || '') + ' accessId=' + (result.accessId || ''));
   return {
     processId: creditResult.processId || '',
     accessId:  result.accessId || ''
