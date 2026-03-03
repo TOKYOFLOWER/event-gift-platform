@@ -188,8 +188,15 @@ function callGmoOpenApiCharge(order, token, returnBaseUrl) {
 
   var payload = {
     merchant: {
-      callbackUrl: callbackUrl,
-      webhookUrl:  webhookUrl
+      name:                '株式会社東京フラワー',
+      nameKana:            'カブシキガイシャトウキョウフラワー',
+      nameAlphabet:        'Tokyo Flower Co., Ltd.',
+      nameShort:           'Tokyo Flower',
+      contactName:         'カスタマーサポート',
+      contactPhone:        '03-3561-5787',
+      contactOpeningHours: '10:00-18:00',
+      callbackUrl:         callbackUrl,
+      webhookUrl:          webhookUrl
     },
     order: {
       orderId:         order.gmoOrderId,
