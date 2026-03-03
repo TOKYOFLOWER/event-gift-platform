@@ -10,8 +10,8 @@ window.GAS_CONFIG = {
   // 後方互換: publicUrl のフォールバック
   apiUrl: 'https://script.google.com/macros/s/AKfycbz7iZFjF6JXnnvUNWZ8_TwbAa1UfW5xeYz3ndEpg17HhWnEbR6qXVUyfCsG9eyBaVtUAQ/exec',
 
-  // GMO-PG OpenAPIタイプ token.js URL（テスト環境）
-  gmoTokenJsUrl: 'https://stg.openapi.mul-pay.jp/ext/js/token.js',
+  // GMO-PG token.js URL
+  gmoTokenJsUrl: 'https://static.mul-pay.jp/ext/js/token.js',
 
   // フロントエンドのベース URL（GMO コールバック先）
   // Vercel root = frontend/ のため /public サブパスが必要
