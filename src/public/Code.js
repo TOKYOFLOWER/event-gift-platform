@@ -38,42 +38,23 @@ function doGet(e) {
 function doPost(e) {
   var params      = (e && e.parameter)  || {};
   var postData    = (e && e.postData)   || {};
-  var contentType = (postData.type      || '').toLowerCase();
   var contents    = (postData.contents  || '');
   var action      = params.action || '';
 
-  // ── [1] GMO OpenAPI Webhook（application/json POST）──────────
-  // GMO-PG OpenAPIタイプは Webhook を JSON で送信する。
-  // GAS は 2xx を返せば OK（レスポンスボディは任意）。
-  if (contentType.indexOf('application/json') !== -1 && contents) {
-    try {
-      var webhookBody = JSON.parse(contents);
-      handleGmoWebhook(webhookBody);
-      return ContentService
-        .createTextOutput(JSON.stringify({ ok: true }))
-        .setMimeType(ContentService.MimeType.JSON);
-    } catch (err) {
-      Logger.log('GMO webhook parse/handle error: ' + err.message);
-      // GMO への応答は 200 を返す（再試行ループを防ぐ）
-      return ContentService
-        .createTextOutput(JSON.stringify({ ok: false }))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-  }
-
-  // ── [2] GMO 旧プロトコルタイプ通知（form-encoded & OrderID あり）──
-  // OpenAPIタイプに完全移行後は不要になるが、後方互換として残す。
+  // ── [1] GMO-PG 結果通知プログラム（form-encoded POST, OrderID あり）──
+  // リンクタイプPlus は結果通知を form-encoded で POST する。
+  // 正常応答 = '0'、異常応答 = 'NG'
   if (params.OrderID) {
     try {
       var result = handleGmoNotification(params);
       return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.TEXT);
     } catch (err) {
-      Logger.log('GMO notify (legacy) error: ' + err.message);
+      Logger.log('GMO notify error: ' + err.message);
       return ContentService.createTextOutput('NG').setMimeType(ContentService.MimeType.TEXT);
     }
   }
 
-  // ── [3] その他の POST（後方互換用）──────────────────────────
+  // ── [2] その他の POST（後方互換用）──────────────────────────
   try {
     var body = {};
     try { body = JSON.parse(contents); } catch (_) {}

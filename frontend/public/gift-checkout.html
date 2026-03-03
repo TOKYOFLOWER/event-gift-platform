@@ -7,23 +7,6 @@
   <title>差し入れ情報を入力 — はなたば</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="../shared/css/style.css">
-  <style>
-    .pay-method-card {
-      border: 2px solid #dee2e6;
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
-      cursor: pointer;
-      transition: border-color .15s, background .15s;
-    }
-    .pay-method-card.selected {
-      border-color: var(--color-primary, #b5496a);
-      background: #fff0f4;
-    }
-    .card-input-group input {
-      letter-spacing: .08em;
-    }
-    .card-brand-icons { font-size: 1.4rem; }
-  </style>
 </head>
 <body>
 
@@ -103,70 +86,15 @@
       </div>
     </div>
 
-    <!-- ── お支払い方法 ─────────────────────────────────────── -->
+    <!-- ── お支払いについて ─────────────────────────────────── -->
     <div class="form-section">
-      <p class="form-section-title">お支払い方法</p>
-
-      <div class="d-flex flex-column gap-2 mb-3">
-
-        <!-- クレジットカード -->
-        <label class="pay-method-card selected d-flex align-items-center gap-3" id="payMethodCardLabel">
-          <input type="radio" name="payType" value="credit" checked class="form-check-input mt-0" id="payCredit">
-          <div class="flex-grow-1">
-            <div class="fw-semibold">クレジットカード</div>
-            <div class="text-muted small card-brand-icons">VISA　Mastercard　JCB　AMEX</div>
-          </div>
-        </label>
-
-        <!-- PayPay -->
-        <label class="pay-method-card d-flex align-items-center gap-3" id="payMethodPaypayLabel">
-          <input type="radio" name="payType" value="paypay" class="form-check-input mt-0" id="payPaypay">
-          <div class="flex-grow-1">
-            <div class="fw-semibold">PayPay</div>
-            <div class="text-muted small">PayPayアプリで支払い</div>
-          </div>
-        </label>
-
-      </div>
-
-      <!-- クレジットカード入力フォーム -->
-      <div id="creditCardForm" class="card-input-group border rounded-3 p-3 bg-light">
-        <div class="mb-3">
-          <label class="form-label fw-semibold small">カード番号 <span class="text-danger">*</span></label>
-          <input type="text" id="cardno" class="form-control font-monospace"
-            placeholder="1234 5678 9012 3456"
-            maxlength="19" autocomplete="cc-number" inputmode="numeric">
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-7">
-            <label class="form-label fw-semibold small">有効期限 <span class="text-danger">*</span></label>
-            <input type="text" id="cardExpire" class="form-control"
-              placeholder="MM / YY"
-              maxlength="7" autocomplete="cc-exp" inputmode="numeric">
-            <div class="form-text">例: 12 / 28</div>
-          </div>
-          <div class="col-5">
-            <label class="form-label fw-semibold small">セキュリティコード <span class="text-danger">*</span></label>
-            <input type="password" id="cardCvc" class="form-control"
-              placeholder="CVV"
-              maxlength="4" autocomplete="cc-csc" inputmode="numeric">
-          </div>
-        </div>
-        <div class="mb-1">
-          <label class="form-label fw-semibold small">カード名義（任意）</label>
-          <input type="text" id="cardHolder" class="form-control text-uppercase"
-            placeholder="TARO YAMADA"
-            maxlength="50" autocomplete="cc-name">
-        </div>
-        <div class="mt-2 text-muted" style="font-size:.78rem">
-          🔒 カード情報は GMO ペイメントサービスの安全なシステムで処理されます。当サイトのサーバーには保存されません。
-        </div>
-      </div>
-
-      <!-- PayPay 説明 -->
-      <div id="paypayInfo" class="d-none border rounded-3 p-3 bg-light text-center">
-        <p class="mb-1 fw-semibold">「支払いへ進む」をタップすると</p>
-        <p class="mb-0 text-muted small">PayPay の決済画面へ移動します。<br>スマートフォンの PayPay アプリで支払いを完了してください。</p>
+      <p class="form-section-title">お支払いについて</p>
+      <div class="border rounded-3 p-3 bg-light">
+        <p class="mb-1 fw-semibold">💳 クレジットカード決済</p>
+        <p class="text-muted small mb-0">
+          「支払いへ進む」ボタンをクリックすると、GMOペイメントサービスの安全な決済ページへ移動します。<br>
+          カード情報は決済ページで入力していただきます。VISA / Mastercard / JCB / AMEX に対応しています。
+        </p>
       </div>
     </div>
 
@@ -209,26 +137,7 @@
 
   if (!eventId || !performerId || !productId) { location.href = 'index.html'; return; }
 
-  // ── GMO token.js をダイナミックロード ───────────────────────
   const cfg = getConfig();
-  const tokenJsUrl = cfg.gmoTokenJsUrl || 'https://stg.static.mul-pay.jp/token.js';
-  await new Promise((resolve) => {
-    const s = document.createElement('script');
-    s.src = tokenJsUrl;
-    s.onload  = resolve;
-    s.onerror = () => {
-      console.warn('GMO token.js のロードに失敗しました:', tokenJsUrl);
-      resolve(); // エラーでも続行（PayPay フォールバック）
-    };
-    document.head.appendChild(s);
-  });
-
-  // token.js 初期化
-  if (window.Multipayment && cfg.gmoShopId) {
-    Multipayment.init(cfg.gmoShopId);
-  }
-
-  // ── API クライアント初期化 ──────────────────────────────────
   const api = new GasApi({ publicUrl: cfg.publicUrl, adminUrl: cfg.adminUrl });
 
   // ── パンくず更新 ────────────────────────────────────────────
@@ -282,38 +191,7 @@
     setText('#msgCount', this.value.length);
   });
 
-  // ── 支払い方法切替 ──────────────────────────────────────────
-  const creditCardForm  = $('#creditCardForm');
-  const paypayInfo      = $('#paypayInfo');
-  const labelCredit     = $('#payMethodCardLabel');
-  const labelPaypay     = $('#payMethodPaypayLabel');
-  const submitBtn       = $('#submitBtn');
-
-  document.querySelectorAll('[name=payType]').forEach(radio => {
-    radio.addEventListener('change', () => {
-      const isCredit = radio.value === 'credit';
-      isCredit ? show(creditCardForm) : hide(creditCardForm);
-      isCredit ? hide(paypayInfo)     : show(paypayInfo);
-      labelCredit.classList.toggle('selected', isCredit);
-      labelPaypay.classList.toggle('selected', !isCredit);
-      submitBtn.textContent = isCredit ? '💳 支払いへ進む' : '💰 PayPay で支払いへ進む';
-    });
-  });
-
-  // ── カード番号フォーマット（4桁スペース区切り）─────────────
-  $('#cardno').addEventListener('input', function () {
-    let v = this.value.replace(/\D/g, '').slice(0, 16);
-    this.value = v.replace(/(\d{4})(?=\d)/g, '$1 ');
-  });
-
-  // ── 有効期限フォーマット（MM / YY）──────────────────────────
-  $('#cardExpire').addEventListener('input', function () {
-    let v = this.value.replace(/\D/g, '').slice(0, 4);
-    if (v.length > 2) v = v.slice(0, 2) + ' / ' + v.slice(2);
-    this.value = v;
-  });
-
-  // ── フォーム送信 ────────────────────────────────────────────
+  // ── フォーム送信 → GAS API → GMO決済ページへリダイレクト ──
   document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
@@ -321,49 +199,9 @@
     btn.textContent = '処理中...';
     hide('#formError');
 
-    const data    = formToObj(e.target);  // buyerName, buyerEmail, buyerPhone, messageToPerformer, ...
-    const payType = data.payType || 'credit';
+    const data = formToObj(e.target);
 
     try {
-      let gmoToken = '';
-
-      if (payType === 'credit') {
-        // ── カードトークン取得 ────────────────────────────────
-        if (!window.Multipayment) {
-          throw new Error('決済ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
-        }
-
-        const cardno      = $('#cardno').value.replace(/\s/g, '');
-        const rawExpire   = $('#cardExpire').value.replace(/\s/g, '');   // "MM/YY" or "MM / YY"
-        const expireParts = rawExpire.replace(/\//g, '').trim();          // → "MMYY"
-        const expireMM    = expireParts.slice(0, 2);
-        const expireYY    = expireParts.slice(2, 4);
-        const expire      = expireYY + expireMM;  // → GMO 形式 "YYMM"
-        const cvc         = $('#cardCvc').value.trim();
-        const holder      = $('#cardHolder').value.trim().toUpperCase();
-
-        if (!cardno || cardno.length < 14) throw new Error('カード番号を正しく入力してください。');
-        if (!expire || expire.length !== 4) throw new Error('有効期限を正しく入力してください（例: 12 / 28）。');
-        if (!cvc)   throw new Error('セキュリティコードを入力してください。');
-
-        gmoToken = await new Promise((resolve, reject) => {
-          Multipayment.getToken({
-            cardno,
-            expire,
-            securitycode: cvc,
-            holdername:   holder || '',
-            tokennumber:  '1'
-          }, (resp) => {
-            if (resp.resultCode !== '000') {
-              reject(new Error(cardTokenError_(resp.resultCode)));
-              return;
-            }
-            resolve(resp.tokenObject.token);
-          });
-        });
-      }
-
-      // ── createOrder API 呼び出し ──────────────────────────
       // buyerEmail をセッションに保存（thank-you.html でのポーリング用）
       store.set('last_buyer_email', data.buyerEmail);
 
@@ -371,8 +209,6 @@
         eventId,
         performerId,
         productId,
-        payType,
-        gmoToken,
         buyerName:          data.buyerName          || '',
         buyerEmail:         data.buyerEmail,
         buyerPhone:         data.buyerPhone          || '',
@@ -382,33 +218,16 @@
         returnBaseUrl:      cfg.frontendBaseUrl || ''
       });
 
-      // ── GMO 決済画面 or thank-you.html へリダイレクト ──────
+      // GMO-PG 決済ページへリダイレクト
       location.href = result.redirectUrl;
 
     } catch (err) {
       setHtml('#formError', esc(err.message));
       show('#formError');
       btn.disabled    = false;
-      btn.textContent = payType === 'paypay' ? '💰 PayPay で支払いへ進む' : '💳 支払いへ進む';
+      btn.textContent = '💳 支払いへ進む';
     }
   });
-
-  // ── token.js エラーコード → 日本語メッセージ ───────────────
-  function cardTokenError_(code) {
-    const msg = {
-      '100': 'カード番号が正しくありません。',
-      '101': 'カード番号が正しくありません（桁数エラー）。',
-      '102': 'カード番号が正しくありません（Luhn チェック失敗）。',
-      '110': '有効期限の月が正しくありません。',
-      '111': '有効期限の年が正しくありません。',
-      '112': '有効期限が切れています。',
-      '113': '有効期限の形式が正しくありません。',
-      '121': 'セキュリティコードが正しくありません。',
-      '122': 'セキュリティコードの桁数が正しくありません。',
-      '131': 'カード名義が正しくありません。'
-    };
-    return msg[code] || `カード情報が正しくありません（コード: ${code}）。`;
-  }
 
 })();
 </script>
